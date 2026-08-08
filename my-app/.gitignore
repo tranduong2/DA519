@@ -35,6 +35,9 @@ yarn-error.*
 .env.*
 !.env.example
 
+# Local database backups contain real application data.
+dalat-api/backups/
+
 # typescript
 *.tsbuildinfo
 
