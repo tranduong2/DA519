@@ -2,7 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
 import { ResultSetHeader } from 'mysql2';
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
@@ -15,10 +18,11 @@ app.use((req, res, next) => {
 });
 
 const dbConfig = {
-  host: "localhost",
-  user: "root",
-  password: "123456",
-  database: "DalatShop",
+  host: process.env.DB_HOST ?? process.env.DB_SERVER ?? "localhost",
+  port: Number(process.env.DB_PORT ?? 3306),
+  user: process.env.DB_USER ?? "root",
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME ?? "DalatShop",
 };
 
 type VipTierKey = 'silver' | 'gold' | 'platinum';
@@ -1740,8 +1744,9 @@ async function startServer() {
       res.status(404).json({ message: `Endpoint không tìm thấy: ${req.path}` });
     });
 
-    app.listen(3000, "0.0.0.0", () => {
-      console.log("🚀 API đang chạy tại http://0.0.0.0:3000");
+    const port = Number(process.env.PORT ?? 3000);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`🚀 API đang chạy tại http://0.0.0.0:${port}`);
       console.log("✅ Tất cả routes đã được đăng ký");
     });
   } catch (err) {

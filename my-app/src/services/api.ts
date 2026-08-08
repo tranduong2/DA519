@@ -1,5 +1,7 @@
 
-export const BASE_URL = "http://10.106.44.114:3000";
+// EXPO_PUBLIC_API_URL is supplied by the deployment environment. The fallback
+// keeps the local mobile development workflow working until a production URL is set.
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://10.106.44.114:3000";
 
 // ─── Products ───────────────────────────────────────────
 export const getProducts = async () => {

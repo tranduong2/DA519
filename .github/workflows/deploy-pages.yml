@@ -37,6 +37,8 @@ jobs:
 
       - name: Export web app
         working-directory: my-app
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
         run: npx expo export --platform web
 
       - name: Configure GitHub Pages

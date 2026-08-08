@@ -19,8 +19,9 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "@/types";
 import { useUserStore } from "@/store/userStore";
+import { BASE_URL } from "../services/api";
 
-const API_URL = "http://10.106.44.114:3000";
+const API_URL = BASE_URL;
 
 type OrderTrackingNavProp = NativeStackNavigationProp<RootStackParamList, "OrderTracking">;
 type OrderTrackingRouteProp = RouteProp<RootStackParamList, "OrderTracking">;
