@@ -4,15 +4,15 @@ import {
   ScrollView, Image, ActivityIndicator, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { BASE_URL } from '@/services/api';
+import { staticFlashSaleProducts } from '@/data/products';
 import { imageMap } from '../assets/imageMap';
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
-  price: string;
-  oldPrice?: string;
-  salePrice?: string;
+  price: number;
+  oldPrice?: number;
+  salePrice?: number;
   imageUrl?: string;
   cat?: string;
 }
@@ -60,11 +60,9 @@ export default function FlashSale() {
   const isUserScroll = useRef(false);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/products/flashsale`)
-      .then(r => r.json())
-      .then(data => setProducts(Array.isArray(data) ? data : []))
-      .catch(() => setError('Không thể tải sản phẩm'))
-      .finally(() => setLoading(false));
+    setProducts(staticFlashSaleProducts);
+    setError('');
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -170,9 +168,9 @@ export default function FlashSale() {
 
                 <View style={styles.cardBody}>
                   <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.cardPrice}>{displayPrice}</Text>
+                  <Text style={styles.cardPrice}>{Number(displayPrice).toLocaleString('vi-VN')}đ</Text>
                   {hasDiscount && (
-                    <Text style={styles.cardOldPrice}>{item.oldPrice}</Text>
+                    <Text style={styles.cardOldPrice}>{Number(item.oldPrice).toLocaleString('vi-VN')}đ</Text>
                   )}
                 </View>
 

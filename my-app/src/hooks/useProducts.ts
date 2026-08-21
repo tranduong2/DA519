@@ -1,32 +1,22 @@
-import { useEffect, useState } from "react";
-import { getProducts, getProductsByCategory } from "@/services/api";
-import { imageMap } from "@/data/products";
+import { useMemo } from "react";
+import { staticProducts } from "@/data/products";
+
+const CATEGORY_MAP: Record<string, string> = {
+  "rau-la": "leaf",
+  cu: "root",
+  qua: "fruit",
+  "rau-thom": "herb",
+  nam: "mushroom",
+};
 
 export function useProducts(category: string = "all") {
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const products = useMemo(
+    () => {
+      const mappedCategory = CATEGORY_MAP[category] ?? category;
+      return mappedCategory === "all" ? staticProducts : staticProducts.filter((product) => product.cat === mappedCategory);
+    },
+    [category],
+  );
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    const fetcher = category === "all"
-      ? getProducts()
-      : getProductsByCategory(category);
-
-    fetcher
-      .then((data) => {
-        const mapped = data.map((item: any) => ({
-          ...item,
-          id:    String(item.id),
-          image: imageMap[item.imageUrl] ?? require("../assets/img5.jpg"),
-        }));
-        setProducts(mapped);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [category]);
-
-  return { products, loading, error };
+  return { products, loading: false, error: null };
 }

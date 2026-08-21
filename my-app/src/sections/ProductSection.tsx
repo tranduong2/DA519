@@ -4,7 +4,8 @@ import {
   ActivityIndicator, useWindowDimensions, DimensionValue,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { getFlashSaleProducts, BASE_URL } from "@/services/api";
+import { BASE_URL } from "@/services/api";
+import { staticProducts } from "@/data/products";
 import { imageMap } from "../assets/imageMap";
 import { useCartStore } from "@/store/cartStore";
 import { useCategory } from "@/context/CategoryContext";
@@ -139,13 +140,9 @@ export default function ProductSection() {
   const [addedId, setAddedId]         = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    getFlashSaleProducts()
-      .then((data: any[]) =>
-        setAllProducts(data.map((item: any) => ({ ...item, id: String(item.id) })))
-      )
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+    setAllProducts(staticProducts);
+    setError(null);
+    setLoading(false);
   }, []);
 
   useEffect(() => { setPage(1); }, [activeCategory]);

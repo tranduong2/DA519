@@ -4,7 +4,6 @@ import {
   ActivityIndicator, Platform, UIManager,
 } from 'react-native';
 import { useCategory } from '@/context/CategoryContext';
-import { BASE_URL } from '@/services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -41,6 +40,13 @@ const EMOJI_MAP: Record<string, string> = {
 };
 
 const ALL_ITEM = { id: 0, slug: 'all', name: 'Tất cả sản phẩm' };
+const STATIC_CATEGORIES: CategoryItem[] = [
+  { id: 1, slug: 'rau-la', name: 'Rau lá' },
+  { id: 2, slug: 'cu', name: 'Củ quả' },
+  { id: 3, slug: 'qua', name: 'Rau quả' },
+  { id: 4, slug: 'nam', name: 'Nấm' },
+  { id: 5, slug: 'rau-thom', name: 'Rau thơm' },
+];
 const GREEN      = '#2e7d32';
 const DARK_GREEN = '#1b5e20';
 
@@ -68,17 +74,9 @@ function Chevron({ open }: { open: boolean }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CategoryGrid() {
   const { activeCategory, setActiveCategory } = useCategory();
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [categories] = useState<CategoryItem[]>(STATIC_CATEGORIES);
+  const [loading] = useState(false);
   const [expanded, setExpanded]     = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`${BASE_URL}/categories`)
-      .then(r => r.json())
-      .then(data => setCategories(data.categories ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const toggleExpand = (slug: string) => {
     setExpanded(prev => (prev === slug ? null : slug));
