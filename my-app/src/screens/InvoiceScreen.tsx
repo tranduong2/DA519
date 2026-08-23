@@ -26,10 +26,6 @@ export default function InvoiceScreen() {
 
   const { checkedItems, orderCode, orderDate } = route.params;
 
-  const totalPrice = checkedItems.reduce(
-    (sum, s) => sum + getPrice(s.product.price) * s.kg, 0
-  );
-
   // ─── Modal state ──────────────────────────────────────
   const [modal, setModal] = React.useState<{
     visible: boolean;
@@ -47,7 +43,7 @@ export default function InvoiceScreen() {
   const handleModalOK = () => {
     setModal(m => ({ ...m, visible: false }));
     if (modal.success) {
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'BulkOrderTracking' }] });
     }
   };
 
@@ -66,20 +62,18 @@ export default function InvoiceScreen() {
       `📱 SĐT      : ${user?.phone ?? ''}`,
       '',
       '──────────────────────────────────',
-      ' STT  SẢN PHẨM             KG    GIÁ',
+      ' STT  SẢN PHẨM             SỐ LƯỢNG',
       '──────────────────────────────────',
       ...checkedItems.map((s, i) => {
         const stt      = String(i + 1).padStart(3, ' ');
         const name     = s.product.name.slice(0, 18).padEnd(18, ' ');
         const kg       = String(s.kg).padStart(4, ' ');
-        const price    = (getPrice(s.product.price) * s.kg).toLocaleString('vi-VN') + 'đ';
         const noteLine = s.note ? `       📝 ${s.note}` : '';
-        return [`${stt}.  ${name} ${kg}kg  ${price}`, noteLine]
+        return [`${stt}.  ${name} ${kg} kg`, noteLine]
           .filter(Boolean).join('\n');
       }),
       '──────────────────────────────────',
       `TỔNG SỐ MẶT HÀNG : ${checkedItems.length} loại`,
-      `TỔNG TIỀN         : ${totalPrice.toLocaleString('vi-VN')}đ`,
       '──────────────────────────────────',
       '',
       '⚠️  Đơn hàng cần xác nhận từ Admin',
@@ -109,13 +103,13 @@ export default function InvoiceScreen() {
       await createBulkOrder(user.token, {
         orderCode,
         orderDate,
-        totalPrice,
+        totalPrice: 0,
         items: checkedItems.map(s => ({
           productId:   s.product.id,
           productName: s.product.name,
           kg:          s.kg,
-          pricePerKg:  getPrice(s.product.price),
-          subtotal:    getPrice(s.product.price) * s.kg,
+          pricePerKg:  0,
+          subtotal:    0,
           note:        s.note,
         })),
       });
@@ -132,7 +126,7 @@ export default function InvoiceScreen() {
       showModal(
         true,
         '✅ Đặt hàng thành công!',
-        `Đơn hàng #${orderCode} đã gửi đến Admin.\nChúng tôi sẽ xác nhận sớm nhất!`,
+        `Đơn sỉ đã gửi đến Admin.\nBấm OK để theo dõi trạng thái đơn.`,
       );
 
     } catch (err: any) {
@@ -204,18 +198,14 @@ export default function InvoiceScreen() {
           <View style={styles.tableHead}>
             <Text style={[styles.thText, { flex: 0.3 }]}>STT</Text>
             <Text style={[styles.thText, { flex: 1 }]}>Sản phẩm</Text>
-            <Text style={[styles.thText, { width: 50, textAlign: 'right' }]}>KG</Text>
-            <Text style={[styles.thText, { width: 90, textAlign: 'right' }]}>Thành tiền</Text>
+            <Text style={[styles.thText, { width: 90, textAlign: 'center' }]}>SỐ LƯỢNG</Text>
           </View>
           {checkedItems.map((s, i) => (
             <View key={String(s.product.id)} style={[styles.tableRow, i % 2 === 0 && styles.tableRowEven]}>
               <View style={styles.tableRowTop}>
                 <Text style={styles.tdNo}>{i + 1}</Text>
                 <Text style={styles.tdName} numberOfLines={2}>{s.product.name}</Text>
-                <Text style={styles.tdKg}>{s.kg}</Text>
-                <Text style={styles.tdPrice}>
-                  {(getPrice(s.product.price) * s.kg).toLocaleString()}đ
-                </Text>
+                <Text style={[styles.tdKg, { width: 90, textAlign: 'center', fontWeight: '900' }]}>{s.kg} kg</Text>
               </View>
               {s.note ? <Text style={styles.tdNote}>📝 {s.note}</Text> : null}
             </View>
@@ -232,11 +222,6 @@ export default function InvoiceScreen() {
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng kg</Text>
               <Text style={styles.totalVal}>{checkedItems.reduce((s, i) => s + i.kg, 0)} kg</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.totalRow}>
-              <Text style={styles.grandLabel}>TỔNG TIỀN</Text>
-              <Text style={styles.grandPrice}>{totalPrice.toLocaleString()}đ</Text>
             </View>
           </View>
         </View>

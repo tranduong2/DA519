@@ -17,6 +17,7 @@ const navItems: { id: keyof RootStackParamList; label: string; icon: string }[] 
 
 const menuItems = [
   { icon: '📦', label: 'Đơn hàng của tôi',   action: 'orders'    },
+  { icon: '📋', label: 'Đơn sỉ của tôi',      action: 'bulkOrders'},
   { icon: '🎁', label: 'Khuyến mãi của tôi', action: 'promo'     },
   { icon: '⭐', label: 'Điểm thưởng VIP',     action: 'vip'       },
   { icon: '🔐', label: 'Tài khoản của tôi',  action: 'taikhoan'  },
@@ -47,6 +48,7 @@ export default function Header() {
     switch (action) {
       case 'taikhoan':         navigationRef.navigate('TaiKhoan');          break;
       case 'orders':           navigationRef.navigate('OrderList');         break;
+      case 'bulkOrders':       navigationRef.navigate('BulkOrderTracking'); break;
       case 'admin':            navigationRef.navigate('Admin');             break;
       case 'manageUsers':      navigationRef.navigate('ManageProfile');     break;
       case 'manageProducts':   navigationRef.navigate('ManageProducts');    break;

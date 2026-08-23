@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Modal, SafeAreaView, RefreshControl,
+  ActivityIndicator, Modal, SafeAreaView, RefreshControl, TextInput,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -66,6 +66,7 @@ export default function OrdersScreen() {
   const [loading,      setLoading]      = useState(false);
   const [refreshing,   setRefreshing]   = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const [dateSearch,   setDateSearch]   = useState('');
   const [orderModal,   setOrderModal]   = useState<{
     visible: boolean; orderId: number; type: 'normal' | 'bulk'; current: string;
   } | null>(null);
@@ -178,37 +179,27 @@ export default function OrdersScreen() {
       activeOpacity={0.78}
       onPress={() => navigation.navigate('AdminOrderDetail', { orderId: o.id, type: 'bulk' })}
       accessibilityRole="button"
-      accessibilityLabel={`Xem chi tiết đơn sỉ ${o.orderCode} của ${o.userName ?? 'khách hàng'}`}
+      accessibilityLabel={`Xem chi tiết đơn sỉ của ${o.userName ?? 'cửa hàng'}`}
     >
       <View style={s.cardTop}>
         <View style={{ flex: 1 }}>
           <Text style={s.storeLabel}>CỬA HÀNG ĐẶT ĐƠN</Text>
           <Text style={s.storeName}>🏪 {o.userName || 'Chưa có tên cửa hàng'}</Text>
         </View>
-        {renderBadge(o.status)}
+        <Text style={s.openArrow}>›</Text>
       </View>
-      <View style={s.divider} />
-      {o.items.map((item, i) => (
-        <View key={i} style={s.bulkItemRow}>
-          <Text style={s.bulkItemName} numberOfLines={2}>{item.productName}</Text>
-          <View style={s.quantityBox}>
-            <Text style={s.quantityLabel}>SỐ LƯỢNG</Text>
-            <Text style={s.quantityValue}>{item.kg}</Text>
-          </View>
-        </View>
-      ))}
-      <TouchableOpacity
-        style={s.updateBtn}
-        onPress={(event) => {
-          event.stopPropagation();
-          setOrderModal({ visible: true, orderId: o.id, type: 'bulk', current: o.status });
-        }}
-      >
-        <Text style={s.updateBtnText}>✏️ Cập nhật trạng thái</Text>
-      </TouchableOpacity>
-      <Text style={s.viewHint}>Nhấn để xem chi tiết đơn hàng →</Text>
     </TouchableOpacity>
   );
+
+  const matchesDate = (value: string) => {
+    const q = dateSearch.trim().toLowerCase();
+    if (!q) return true;
+    const d = new Date(value);
+    return [d.toLocaleDateString('vi-VN'), d.toISOString().slice(0, 10), String(d.getMonth() + 1), String(d.getFullYear())]
+      .some(v => v.toLowerCase().includes(q));
+  };
+  const visibleNormalOrders = normalOrders.filter(o => matchesDate(o.createdAt));
+  const visibleBulkOrders = bulkOrders.filter(o => matchesDate(o.createdAt) || (o.userName || '').toLowerCase().includes(dateSearch.trim().toLowerCase()));
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
@@ -332,6 +323,18 @@ export default function OrdersScreen() {
         ))}
       </View>
 
+      <View style={s.searchWrap}>
+        <Text style={s.searchIcon}>🔎</Text>
+        <TextInput
+          value={dateSearch}
+          onChangeText={setDateSearch}
+          style={s.searchInput}
+          placeholder={orderTab === 'bulk' ? 'Tìm tên cửa hàng hoặc ngày/tháng/năm' : 'Tìm theo ngày/tháng/năm, VD: 24/08/2026'}
+          placeholderTextColor="#90a4ae"
+        />
+        {dateSearch ? <TouchableOpacity onPress={() => setDateSearch('')}><Text style={s.searchClear}>✕</Text></TouchableOpacity> : null}
+      </View>
+
       {/* Content */}
       {loading && !refreshing ? (
         <View style={s.center}>
@@ -357,14 +360,14 @@ export default function OrdersScreen() {
           }
         >
           {orderTab === 'orders' && (
-            normalOrders.length === 0
-              ? <Text style={s.empty}>Chưa có đơn hàng nào</Text>
-              : normalOrders.map(renderOrderCard)
+            visibleNormalOrders.length === 0
+              ? <Text style={s.empty}>Không tìm thấy đơn hàng</Text>
+              : visibleNormalOrders.map(renderOrderCard)
           )}
           {orderTab === 'bulk' && (
-            bulkOrders.length === 0
-              ? <Text style={s.empty}>Chưa có đơn sỉ nào</Text>
-              : bulkOrders.map(renderBulkCard)
+            visibleBulkOrders.length === 0
+              ? <Text style={s.empty}>Không tìm thấy đơn sỉ</Text>
+              : visibleBulkOrders.map(renderBulkCard)
           )}
         </ScrollView>
       )}
@@ -388,6 +391,10 @@ const s = StyleSheet.create({
   tabActive:   { borderBottomWidth: 3, borderBottomColor: '#2e7d32' },
   tabText:     { fontSize: 13, color: '#aaa', fontWeight: '600' },
   tabTextActive: { color: '#2e7d32', fontWeight: '800' },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', margin: 12, marginBottom: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 12, paddingHorizontal: 12 },
+  searchIcon: { fontSize: 16 },
+  searchInput: { flex: 1, padding: 12, fontSize: 13, color: '#263238', outlineStyle: 'none' } as any,
+  searchClear: { color: '#78909c', padding: 6 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   list:   { padding: 16, gap: 12, paddingBottom: 40 },
@@ -414,6 +421,7 @@ const s = StyleSheet.create({
   itemPrice: { fontSize: 12, color: '#e65100', fontWeight: '700', width: 80, textAlign: 'right' },
   storeLabel: { fontSize: 10, color: '#78909c', fontWeight: '800', letterSpacing: 0.8, marginBottom: 4 },
   storeName: { fontSize: 18, color: '#1b5e20', fontWeight: '900' },
+  openArrow: { fontSize: 30, lineHeight: 32, color: '#66bb6a', fontWeight: '700' },
   bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
   bulkItemName: { flex: 1, fontSize: 17, lineHeight: 23, color: '#263238', fontWeight: '900' },
   quantityBox: { minWidth: 86, backgroundColor: '#e8f5e9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },

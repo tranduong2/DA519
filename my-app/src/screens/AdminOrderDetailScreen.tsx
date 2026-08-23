@@ -31,6 +31,7 @@ export default function AdminOrderDetailScreen() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const loadOrder = useCallback(async () => {
     if (!token) {
@@ -60,6 +61,20 @@ export default function AdminOrderDetailScreen() {
   }, [orderId, token, type]);
 
   useEffect(() => { loadOrder(); }, [loadOrder]);
+
+  const updateBulkStatus = async (status: string) => {
+    if (!token || type !== 'bulk') return;
+    try {
+      setSaving(true); setError('');
+      const response = await fetch(`${BASE_URL}/admin/bulk-orders/${orderId}/status`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'Cập nhật trạng thái thất bại.');
+      setOrder((current: any) => ({ ...current, status }));
+    } catch (reason: any) { setError(reason.message); }
+    finally { setSaving(false); }
+  };
 
   if (loading) {
     return <SafeAreaView style={s.page}><View style={s.center}><ActivityIndicator size="large" color="#2e7d32"/><Text style={s.loading}>Đang tải chi tiết đơn hàng...</Text></View></SafeAreaView>;
@@ -109,8 +124,10 @@ export default function AdminOrderDetailScreen() {
 
         <View style={[s.itemsCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>Sản phẩm đã đặt ({order.items?.length ?? 0})</Text>
+          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>SỐ LƯỢNG</Text></View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
             <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, isMobile && s.itemRowMobile]}>
+              {!isNormal ? <Text style={s.excelNo}>{index + 1}</Text> : null}
               <View style={{ flex: 1 }}>
                 <Text style={isNormal ? s.itemName : s.bulkItemName}>{item.productName}</Text>
                 {isNormal ? <Text style={s.itemMeta}>Số lượng: {item.quantity}</Text> : null}
@@ -132,7 +149,19 @@ export default function AdminOrderDetailScreen() {
             <View style={[s.summaryRow, isMobile && s.summaryRowMobile]}><Text style={s.summaryLabel}>Thanh toán</Text><Text style={s.summaryValue}>{order.paymentMethod === 'cod' ? 'Khi nhận hàng (COD)' : 'Chuyển khoản'}</Text></View>
             <View style={[s.totalRow, isMobile && s.summaryRowMobile]}><Text style={s.totalLabel}>Tổng thanh toán</Text><Text style={s.totalValue}>{money(total)}</Text></View>
           </View>
-        ) : null}
+        ) : (
+          <View style={[s.statusCard, isMobile && s.cardMobile]}>
+            <Text style={s.sectionTitle}>Cập nhật trạng thái đơn sỉ</Text>
+            {error ? <Text style={s.inlineError}>{error}</Text> : null}
+            <View style={s.statusButtons}>
+              {[['pending','Chờ xác nhận'],['confirmed','Đã xác nhận'],['delivering','Đang giao'],['delivered','Đã giao'],['cancelled','Đã hủy']].map(([value, label]) => (
+                <TouchableOpacity key={value} disabled={saving} onPress={() => updateBulkStatus(value)} style={[s.statusBtn, order.status === value && { backgroundColor: STATUS_COLORS[value], borderColor: STATUS_COLORS[value] }]}>
+                  <Text style={[s.statusBtnText, order.status === value && { color: '#fff' }]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -160,12 +189,17 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '900', color: '#1b5e20', marginBottom: 12 },
   customerName: { fontSize: 15, fontWeight: '800', color: '#263238', marginBottom: 7 }, info: { fontSize: 13, color: '#546e7a', lineHeight: 22 },
   itemsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#edf4ed' },
-  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
+  excelHead: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2e7d32', paddingVertical: 10, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1b5e20' },
+  excelNo: { width: 44, textAlign: 'center', fontWeight: '800', color: '#607d8b' },
+  excelProduct: { flex: 1, color: '#fff', fontWeight: '900', fontSize: 11 },
+  excelQty: { width: 110, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
+  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderTopWidth: 0, borderColor: '#c8e6c9' },
   itemRowMobile: { alignItems: 'flex-start', gap: 7 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
   quantityBox: { minWidth: 92, backgroundColor: '#e8f5e9', borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center' },
   quantityLabel: { fontSize: 9, color: '#558b2f', fontWeight: '900', letterSpacing: 0.7 },
   quantityValue: { fontSize: 27, lineHeight: 32, color: '#1b5e20', fontWeight: '900' },
+  statusCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, statusBtn: { borderWidth: 1, borderColor: '#a5d6a7', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 10 }, statusBtnText: { color: '#2e7d32', fontWeight: '800', fontSize: 12 }, inlineError: { color: '#c62828', marginBottom: 10 },
   summaryCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 13 }, summaryLabel: { color: '#607d8b' }, summaryValue: { color: '#263238', fontWeight: '700' },
   summaryRowMobile: { gap: 12, flexWrap: 'wrap' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 2, borderTopColor: '#e8f5e9', paddingTop: 14 }, totalLabel: { fontSize: 15, fontWeight: '800', color: '#37474f' }, totalValue: { fontSize: 20, fontWeight: '900', color: '#e65100' },
