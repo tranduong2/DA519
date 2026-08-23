@@ -66,6 +66,9 @@ export default function OrdersScreen() {
   const [orderModal,   setOrderModal]   = useState<{
     visible: boolean; orderId: number; type: 'normal' | 'bulk'; current: string;
   } | null>(null);
+  const [detailOrder, setDetailOrder] = useState<{
+    type: 'normal' | 'bulk'; order: NormalOrder | BulkOrder;
+  } | null>(null);
 
   const headers = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -120,7 +123,14 @@ export default function OrdersScreen() {
   );
 
   const renderOrderCard = (o: NormalOrder) => (
-    <View key={o.id} style={s.card}>
+    <TouchableOpacity
+      key={o.id}
+      style={s.card}
+      activeOpacity={0.78}
+      onPress={() => setDetailOrder({ type: 'normal', order: o })}
+      accessibilityRole="button"
+      accessibilityLabel={`Xem chi tiết đơn ${o.orderCode} của ${o.userName ?? 'khách hàng'}`}
+    >
       <View style={s.cardTop}>
         <View style={{ flex: 1 }}>
           <Text style={s.code}>{o.orderCode}</Text>
@@ -147,15 +157,26 @@ export default function OrdersScreen() {
       </View>
       <TouchableOpacity
         style={s.updateBtn}
-        onPress={() => setOrderModal({ visible: true, orderId: o.id, type: 'normal', current: o.status })}
+        onPress={(event) => {
+          event.stopPropagation();
+          setOrderModal({ visible: true, orderId: o.id, type: 'normal', current: o.status });
+        }}
       >
         <Text style={s.updateBtnText}>✏️ Cập nhật trạng thái</Text>
       </TouchableOpacity>
-    </View>
+      <Text style={s.viewHint}>Nhấn để xem chi tiết đơn hàng →</Text>
+    </TouchableOpacity>
   );
 
   const renderBulkCard = (o: BulkOrder) => (
-    <View key={o.id} style={s.card}>
+    <TouchableOpacity
+      key={o.id}
+      style={s.card}
+      activeOpacity={0.78}
+      onPress={() => setDetailOrder({ type: 'bulk', order: o })}
+      accessibilityRole="button"
+      accessibilityLabel={`Xem chi tiết đơn sỉ ${o.orderCode} của ${o.userName ?? 'khách hàng'}`}
+    >
       <View style={s.cardTop}>
         <View style={{ flex: 1 }}>
           <Text style={s.code}>{o.orderCode}</Text>
@@ -179,16 +200,89 @@ export default function OrdersScreen() {
       </View>
       <TouchableOpacity
         style={s.updateBtn}
-        onPress={() => setOrderModal({ visible: true, orderId: o.id, type: 'bulk', current: o.status })}
+        onPress={(event) => {
+          event.stopPropagation();
+          setOrderModal({ visible: true, orderId: o.id, type: 'bulk', current: o.status });
+        }}
       >
         <Text style={s.updateBtnText}>✏️ Cập nhật trạng thái</Text>
       </TouchableOpacity>
-    </View>
+      <Text style={s.viewHint}>Nhấn để xem chi tiết đơn hàng →</Text>
+    </TouchableOpacity>
   );
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
     <SafeAreaView style={s.container}>
+
+      {/* Order detail modal */}
+      <Modal transparent visible={!!detailOrder} animationType="fade" onRequestClose={() => setDetailOrder(null)}>
+        <View style={s.detailOverlay}>
+          <View style={s.detailModal}>
+            {detailOrder && (() => {
+              const order = detailOrder.order;
+              const isNormal = detailOrder.type === 'normal';
+              const normalOrder = isNormal ? order as NormalOrder : null;
+              const bulkOrder = !isNormal ? order as BulkOrder : null;
+              return (
+                <>
+                  <View style={s.detailHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.detailTitle}>Chi tiết {isNormal ? 'đơn hàng' : 'đơn sỉ'}</Text>
+                      <Text style={s.detailCode}>{order.orderCode}</Text>
+                    </View>
+                    {renderBadge(order.status)}
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <View style={s.customerBox}>
+                      <Text style={s.detailSectionTitle}>Thông tin khách hàng</Text>
+                      <Text style={s.customerName}>👤 {order.userName || 'Chưa có tên khách hàng'}</Text>
+                      <Text style={s.customerInfo}>📞 {order.userPhone || 'Chưa có số điện thoại'}</Text>
+                      <Text style={s.customerInfo}>📧 {order.userEmail || 'Chưa có email'}</Text>
+                      {normalOrder?.shippingAddress && (
+                        <Text style={s.customerInfo}>📍 {normalOrder.shippingAddress}</Text>
+                      )}
+                    </View>
+
+                    <Text style={s.detailSectionTitle}>Sản phẩm đã đặt ({order.items.length})</Text>
+                    {order.items.map((item, index) => (
+                      <View key={item.id ?? index} style={s.detailItem}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.detailItemName}>{item.productName}</Text>
+                          <Text style={s.detailItemMeta}>
+                            {isNormal ? `Số lượng: ${item.quantity}` : `Khối lượng: ${item.kg} kg`}
+                          </Text>
+                          {!!item.note && <Text style={s.detailItemNote}>Ghi chú: {item.note}</Text>}
+                        </View>
+                        <Text style={s.detailItemPrice}>
+                          {fmtPrice(Number(isNormal ? item.price * item.quantity : item.subtotal))}
+                        </Text>
+                      </View>
+                    ))}
+
+                    <View style={s.detailTotalRow}>
+                      <Text style={s.detailTotalLabel}>Tổng thanh toán</Text>
+                      <Text style={s.detailTotalValue}>
+                        {fmtPrice(Number(normalOrder?.totalAmount ?? bulkOrder?.totalPrice ?? 0))}
+                      </Text>
+                    </View>
+                    {normalOrder && (
+                      <Text style={s.paymentInfo}>
+                        Phương thức: {normalOrder.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
+                      </Text>
+                    )}
+                  </ScrollView>
+
+                  <TouchableOpacity style={s.detailCloseBtn} onPress={() => setDetailOrder(null)}>
+                    <Text style={s.detailCloseText}>Đóng</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
 
       {/* Status update modal */}
       <Modal transparent visible={!!orderModal?.visible} animationType="slide">
@@ -321,6 +415,7 @@ const s = StyleSheet.create({
   itemPrice: { fontSize: 12, color: '#e65100', fontWeight: '700', width: 80, textAlign: 'right' },
   updateBtn:     { backgroundColor: '#e8f5e9', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 10 },
   updateBtnText: { color: '#2e7d32', fontWeight: '700', fontSize: 13 },
+  viewHint: { color: '#78909c', fontSize: 11, textAlign: 'center', marginTop: 9 },
   retryBtn:  { backgroundColor: '#2e7d32', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 16 },
   retryText: { color: '#fff', fontWeight: '700' },
 
@@ -336,4 +431,24 @@ const s = StyleSheet.create({
   dot:             { width: 12, height: 12, borderRadius: 6 },
   sheetCancel:     { marginTop: 16, alignItems: 'center', paddingVertical: 12, backgroundColor: '#f5f5f5', borderRadius: 12 },
   sheetCancelText: { color: '#888', fontWeight: '700', fontSize: 14 },
+  detailOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.48)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  detailModal: { width: '100%', maxWidth: 600, maxHeight: '88%', backgroundColor: '#fff', borderRadius: 20, padding: 18 },
+  detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  detailTitle: { fontSize: 18, fontWeight: '900', color: '#1b5e20' },
+  detailCode: { fontSize: 13, color: '#78909c', marginTop: 3, fontWeight: '700' },
+  customerBox: { backgroundColor: '#f1f8e9', borderRadius: 14, padding: 14, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#2e7d32' },
+  detailSectionTitle: { fontSize: 13, fontWeight: '800', color: '#1b5e20', marginBottom: 9 },
+  customerName: { fontSize: 14, fontWeight: '800', color: '#263238', marginBottom: 6 },
+  customerInfo: { fontSize: 12, color: '#546e7a', lineHeight: 19 },
+  detailItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#edf4ed', gap: 10 },
+  detailItemName: { fontSize: 13, color: '#263238', fontWeight: '700' },
+  detailItemMeta: { fontSize: 12, color: '#78909c', marginTop: 3 },
+  detailItemNote: { fontSize: 11, color: '#8d6e63', fontStyle: 'italic', marginTop: 3 },
+  detailItemPrice: { fontSize: 13, color: '#e65100', fontWeight: '800' },
+  detailTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 13, borderTopWidth: 2, borderTopColor: '#e8f5e9' },
+  detailTotalLabel: { fontSize: 14, color: '#455a64', fontWeight: '700' },
+  detailTotalValue: { fontSize: 17, color: '#e65100', fontWeight: '900' },
+  paymentInfo: { fontSize: 12, color: '#607d8b', textAlign: 'right', marginTop: 7 },
+  detailCloseBtn: { backgroundColor: '#2e7d32', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
+  detailCloseText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 });
