@@ -27,6 +27,13 @@ type SelectedItem = {
   note: string;
 };
 
+type CustomItem = {
+  id: string;
+  name: string;
+  kg: string;
+  note: string;
+};
+
 export default function BulkOrderScreen() {
   const navigation = useNavigation<NavProp>();
   const addToCart  = useCartStore(state => state.addToCart);
@@ -36,6 +43,7 @@ export default function BulkOrderScreen() {
   const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
 
   useEffect(() => {
     getProducts()
@@ -102,7 +110,20 @@ export default function BulkOrderScreen() {
   };
 
   const checkedItems = Object.values(selected).filter(s => s.checked);
+  const validCustomItems = customItems.filter(item => item.name.trim() && Number(item.kg) > 0);
   const totalPrice   = checkedItems.reduce((sum, s) => sum + s.product.price * s.kg, 0);
+
+  const addCustomItem = () => {
+    setCustomItems(items => [...items, { id: `custom-${Date.now()}`, name: '', kg: '1', note: '' }]);
+  };
+
+  const updateCustomItem = (id: string, field: keyof Omit<CustomItem, 'id'>, value: string) => {
+    setCustomItems(items => items.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const removeCustomItem = (id: string) => {
+    setCustomItems(items => items.filter(item => item.id !== id));
+  };
 
   const handleAddToCart = () => {
     // ✅ Kiểm tra đăng nhập trước
@@ -120,9 +141,15 @@ export default function BulkOrderScreen() {
 
     // ✅ Tính trực tiếp từ selected để tránh stale state
     const items = Object.values(selected).filter(s => s.checked);
+    const incompleteCustom = customItems.some(item => item.name.trim() || item.kg.trim() !== '1' || item.note.trim()) &&
+      customItems.some(item => !item.name.trim() || !Number(item.kg) || Number(item.kg) <= 0);
 
-    if (items.length === 0) {
-      Alert.alert('Chưa chọn sản phẩm', 'Vui lòng tích chọn ít nhất 1 sản phẩm');
+    if (items.length === 0 && validCustomItems.length === 0) {
+      Alert.alert('Chưa chọn sản phẩm', 'Vui lòng chọn sản phẩm hoặc nhập món khác');
+      return;
+    }
+    if (incompleteCustom) {
+      Alert.alert('Kiểm tra món khác', 'Mỗi dòng cần có tên món và số lượng lớn hơn 0.');
       return;
     }
     if (items.some(s => s.kg === 0)) {
@@ -131,11 +158,15 @@ export default function BulkOrderScreen() {
     }
 
     navigation.navigate('InvoiceScreen', {
-      checkedItems: items.map(s => ({
+      checkedItems: [...items.map(s => ({
         product: s.product,
         kg: s.kg,
         note: s.note,
-      })),
+      })), ...validCustomItems.map(item => ({
+        product: { id: item.id, name: item.name.trim(), price: 0, cat: 'Sản phẩm khác' },
+        kg: Number(item.kg),
+        note: item.note.trim(),
+      }))],
       orderCode: `DH${Date.now().toString().slice(-8)}`,
       orderDate: new Date().toLocaleString('vi-VN'),
     });
@@ -258,12 +289,43 @@ export default function BulkOrderScreen() {
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 160 }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListFooterComponent={(
+          <View style={styles.customSection}>
+            <View style={styles.customHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.customTitle}>➕ Sản phẩm khác</Text>
+                <Text style={styles.customSubtitle}>Không thấy món cần đặt? Hãy ghi từng món vào đây.</Text>
+              </View>
+              <TouchableOpacity style={styles.customAddBtn} onPress={addCustomItem}>
+                <Text style={styles.customAddText}>+ Thêm món</Text>
+              </TouchableOpacity>
+            </View>
+            {customItems.length === 0 ? (
+              <TouchableOpacity style={styles.customEmpty} onPress={addCustomItem}>
+                <Text style={styles.customEmptyText}>Chạm để thêm món khác</Text>
+              </TouchableOpacity>
+            ) : customItems.map((item, index) => (
+              <View key={item.id} style={styles.customRow}>
+                <View style={styles.customNumber}><Text style={styles.customNumberText}>{index + 1}</Text></View>
+                <View style={styles.customFields}>
+                  <TextInput style={styles.customNameInput} value={item.name} onChangeText={value => updateCustomItem(item.id, 'name', value)} placeholder="Tên món cần đặt *" placeholderTextColor="#9e9e9e" />
+                  <TextInput style={styles.customNoteInput} value={item.note} onChangeText={value => updateCustomItem(item.id, 'note', value)} placeholder="Ghi chú (loại, kích thước...)" placeholderTextColor="#b0b0b0" />
+                </View>
+                <View style={styles.customQtyWrap}>
+                  <TextInput style={styles.customQtyInput} value={item.kg} onChangeText={value => updateCustomItem(item.id, 'kg', value.replace(/[^0-9.,]/g, '').replace(',', '.'))} keyboardType="decimal-pad" />
+                  <Text style={styles.customKg}>kg</Text>
+                </View>
+                <TouchableOpacity style={styles.customRemove} onPress={() => removeCustomItem(item.id)}><Text style={styles.customRemoveText}>✕</Text></TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
       />
 
-      {checkedItems.length > 0 && (
+      {(checkedItems.length > 0 || validCustomItems.length > 0) && (
         <View style={styles.footer}>
           <View style={styles.footerInfo}>
-            <Text style={styles.footerCount}>✅ {checkedItems.length} sản phẩm</Text>
+            <Text style={styles.footerCount}>✅ {checkedItems.length + validCustomItems.length} sản phẩm</Text>
             <Text style={styles.footerTotal}>{totalPrice.toLocaleString()}đ</Text>
           </View>
           <TouchableOpacity style={styles.addBtn} onPress={handleAddToCart}>
@@ -327,6 +389,26 @@ const styles = StyleSheet.create({
   kgInputZero: { borderColor: '#e53935', color: '#e53935' },
   kgLabel:   { fontSize: 11, color: '#888' },
   subtotal:  { fontSize: 12, color: '#e65100', fontWeight: '700', marginTop: 2 },
+
+  customSection: { margin: 12, marginTop: 18, padding: 14, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#a5d6a7' },
+  customHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  customTitle: { fontSize: 16, fontWeight: '900', color: '#1b5e20' },
+  customSubtitle: { fontSize: 11, color: '#78909c', marginTop: 3 },
+  customAddBtn: { backgroundColor: '#2e7d32', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 9 },
+  customAddText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  customEmpty: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#81c784', borderRadius: 10, padding: 16, alignItems: 'center' },
+  customEmptyText: { color: '#2e7d32', fontWeight: '700', fontSize: 12 },
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#e8f5e9' },
+  customNumber: { width: 25, height: 25, borderRadius: 13, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
+  customNumberText: { color: '#2e7d32', fontWeight: '900', fontSize: 11 },
+  customFields: { flex: 1, gap: 5 },
+  customNameInput: { borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 8, color: '#263238', fontSize: 13 },
+  customNoteInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, color: '#546e7a', fontSize: 11 },
+  customQtyWrap: { alignItems: 'center' },
+  customQtyInput: { width: 58, borderWidth: 1, borderColor: '#81c784', borderRadius: 8, paddingVertical: 8, textAlign: 'center', color: '#1b5e20', fontWeight: '900' },
+  customKg: { fontSize: 10, color: '#78909c', marginTop: 2 },
+  customRemove: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#ffebee', alignItems: 'center', justifyContent: 'center' },
+  customRemoveText: { color: '#c62828', fontWeight: '900' },
 
   footer:      { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: '#e8f5e9', elevation: 10 },
   footerInfo:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
