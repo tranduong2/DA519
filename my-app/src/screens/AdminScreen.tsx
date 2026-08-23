@@ -3,7 +3,9 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Modal, SafeAreaView, RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '@/navigation/types';
 import { useUserStore } from '@/store/userStore';
 import { BASE_URL } from '@/services/api';
 
@@ -55,6 +57,7 @@ const fmtDate  = (s: string) => new Date(s).toLocaleDateString('vi-VN');
 
 // ─── Main Component ───────────────────────────────────────────────
 export default function OrdersScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const user = useUserStore(s => s.user);
 
   const [orderTab,     setOrderTab]     = useState<OrderTab>('orders');
@@ -127,7 +130,7 @@ export default function OrdersScreen() {
       key={o.id}
       style={s.card}
       activeOpacity={0.78}
-      onPress={() => setDetailOrder({ type: 'normal', order: o })}
+      onPress={() => navigation.navigate('AdminOrderDetail', { orderId: o.id, type: 'normal' })}
       accessibilityRole="button"
       accessibilityLabel={`Xem chi tiết đơn ${o.orderCode} của ${o.userName ?? 'khách hàng'}`}
     >
@@ -173,7 +176,7 @@ export default function OrdersScreen() {
       key={o.id}
       style={s.card}
       activeOpacity={0.78}
-      onPress={() => setDetailOrder({ type: 'bulk', order: o })}
+      onPress={() => navigation.navigate('AdminOrderDetail', { orderId: o.id, type: 'bulk' })}
       accessibilityRole="button"
       accessibilityLabel={`Xem chi tiết đơn sỉ ${o.orderCode} của ${o.userName ?? 'khách hàng'}`}
     >

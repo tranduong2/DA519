@@ -84,6 +84,7 @@ export type RootStackParamList = {
   };
   BulkOrder: undefined;
   Admin: undefined;
+  AdminOrderDetail: { orderId: number; type: 'normal' | 'bulk' };
    Inventory: undefined; 
   ManageProfile: undefined;
   ManageProducts: undefined;

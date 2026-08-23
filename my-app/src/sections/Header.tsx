@@ -268,8 +268,8 @@ export default function Header() {
               </>
             ) : null}
 
-            {/* Common items */}
-            {menuItems.map(item => (
+            {/* Customer-only items: admin menu chỉ giữ các chức năng quản trị ở trên */}
+            {!isAdmin && menuItems.map(item => (
               <TouchableOpacity
                 key={item.action}
                 style={[styles.menuItem, item.action === 'logout' && styles.menuItemLogout]}

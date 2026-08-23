@@ -21,6 +21,7 @@ import OrderDetailScreen from '@/screens/OrderDetailScreen';
 import UserProfileSetupScreen from '@/screens/UserProfileSetupScreen';
 import BulkOrderScreen from '@/screens/BulkOrderScreen';
 import AdminScreen from '@/screens/AdminScreen';
+import AdminOrderDetailScreen from '@/screens/AdminOrderDetailScreen';
 import ManageProfile from '@/screens/ManageProfile';
 import InvoiceScreen from '@/screens/InvoiceScreen';
 import ManageCategories from '@/screens/ManageCategories';
@@ -57,6 +58,7 @@ export default function AppNavigator() {
         <Stack.Screen name="OrderDetail"      component={OrderDetailScreen} />
         <Stack.Screen name="BulkOrder"        component={BulkOrderScreen} />
         <Stack.Screen name="Admin"            component={AdminScreen} />
+        <Stack.Screen name="AdminOrderDetail" component={AdminOrderDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ManageProfile"    component={ManageProfile} />
         <Stack.Screen name="ManageProducts"   component={ManageProducts} />
         <Stack.Screen name="ManageCategories" component={ManageCategories} />
