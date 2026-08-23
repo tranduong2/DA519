@@ -14,6 +14,7 @@ const camelCaseIdentifiers = [
   'discountPct', 'activatedAt', 'createdBy', 'receiver', 'supplier',
   'totalProducts', 'totalStock', 'lowStock', 'flashSuggest', 'todayImport', 'todayExport',
   'totalIn', 'totalOut', 'fsActive', 'createdByName',
+  'userName', 'userPhone', 'userEmail',
 ];
 
 function translateSql(source: string): string {
