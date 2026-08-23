@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ScrollView,
+  ScrollView, Alert, Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +23,31 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setEmailError('Nhập email tài khoản trước khi yêu cầu hỗ trợ.');
+      return;
+    }
+
+    const subject = encodeURIComponent('Yêu cầu hỗ trợ quên mật khẩu FreshVeggies');
+    const body = encodeURIComponent(
+      `Xin chào FreshVeggies,\n\nTôi quên mật khẩu của tài khoản: ${normalizedEmail}\nVui lòng hướng dẫn tôi xác minh và đặt lại mật khẩu.\n\nLưu ý: Tôi sẽ không gửi mật khẩu hoặc mã đăng nhập qua email.`,
+    );
+    const mailUrl = `mailto:nd141003@gmail.com?subject=${subject}&body=${body}`;
+
+    try {
+      const supported = await Linking.canOpenURL(mailUrl);
+      if (!supported) throw new Error('Không có ứng dụng email');
+      await Linking.openURL(mailUrl);
+    } catch {
+      Alert.alert(
+        'Hỗ trợ đặt lại mật khẩu',
+        'Vui lòng liên hệ 0914960478 hoặc gửi email tới nd141003@gmail.com. Không gửi mật khẩu hiện tại cho bất kỳ ai.',
+      );
+    }
+  };
 
   const handleLogin = async () => {
     setEmailError('');
@@ -74,6 +99,15 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Home' }] })}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại trang chính"
+        >
+          <Text style={styles.homeButtonText}>‹ Quay lại trang chính</Text>
+        </TouchableOpacity>
+
         <View style={styles.topDecor}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
@@ -128,8 +162,8 @@ export default function LoginScreen() {
           </View>
           {!!passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
 
-          <TouchableOpacity style={styles.forgotWrap}>
-            <Text style={styles.forgot}>Quen mat khau?</Text>
+          <TouchableOpacity style={styles.forgotWrap} onPress={handleForgotPassword}>
+            <Text style={styles.forgot}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -145,18 +179,18 @@ export default function LoginScreen() {
 
           <View style={styles.divider}>
             <View style={styles.divLine} />
-            <Text style={styles.divText}>hoac</Text>
+            <Text style={styles.divText}>hoặc</Text>
             <View style={styles.divLine} />
           </View>
 
           <TouchableOpacity style={styles.socialBtn} activeOpacity={0.85}>
-            <Text style={styles.socialText}>Tiep tuc voi Google</Text>
+            <Text style={styles.socialText}>Tiếp tục với Google</Text>
           </TouchableOpacity>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>Chua co tai khoan? </Text>
+            <Text style={styles.switchText}>Chưa có tài khoản? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.switchLink}>Dang ky ngay</Text>
+              <Text style={styles.switchLink}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -167,6 +201,9 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, backgroundColor: '#f4faf4', paddingBottom: 40 },
+
+  homeButton: { position: 'absolute', top: 18, left: 18, zIndex: 3, minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.9)' },
+  homeButtonText: { color: '#1b5e20', fontSize: 13, fontWeight: '700' },
 
   topDecor: { position: 'absolute', top: 0, left: 0, right: 0, height: 220, overflow: 'hidden' },
   circle1: { position: 'absolute', top: -80, left: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: '#c8e6c9', opacity: 0.55 },
