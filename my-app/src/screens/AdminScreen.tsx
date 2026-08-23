@@ -186,7 +186,10 @@ export default function OrdersScreen() {
           <Text style={s.storeLabel}>CỬA HÀNG ĐẶT ĐƠN</Text>
           <Text style={s.storeName}>🏪 {o.userName || 'Chưa có tên cửa hàng'}</Text>
         </View>
-        <Text style={s.openArrow}>›</Text>
+        <View style={s.bulkCardActions}>
+          {renderBadge(o.status)}
+          <Text style={s.openArrow}>›</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -422,6 +425,7 @@ const s = StyleSheet.create({
   storeLabel: { fontSize: 10, color: '#78909c', fontWeight: '800', letterSpacing: 0.8, marginBottom: 4 },
   storeName: { fontSize: 18, color: '#1b5e20', fontWeight: '900' },
   openArrow: { fontSize: 30, lineHeight: 32, color: '#66bb6a', fontWeight: '700' },
+  bulkCardActions: { alignItems: 'flex-end', gap: 5 },
   bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
   bulkItemName: { flex: 1, fontSize: 17, lineHeight: 23, color: '#263238', fontWeight: '900' },
   quantityBox: { minWidth: 86, backgroundColor: '#e8f5e9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
