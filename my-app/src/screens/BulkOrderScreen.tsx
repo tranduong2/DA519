@@ -51,10 +51,22 @@ export default function BulkOrderScreen() {
   useEffect(() => {
     getProducts()
       .then(data => {
-        const normalized = data.slice(0, 30).map((p: any) => ({
-          ...p,
-          price: p.priceValue ?? parseFloat(String(p.price).replace(/[^\d]/g, '')) ?? 0,
-        }));
+        const productList = Array.isArray(data) ? data : [];
+        const normalized = productList.slice(0, 30).map((p: any, index: number) => {
+          const parsedPrice = Number(p?.priceValue) || parseFloat(String(p?.price ?? '').replace(/[^\d]/g, ''));
+
+          return {
+            ...p,
+            id: String(p?.id ?? `product-${index}`),
+            name: typeof p?.name === 'string' && p.name.trim()
+              ? p.name.trim()
+              : 'Sản phẩm chưa có tên',
+            cat: typeof p?.cat === 'string' && p.cat.trim()
+              ? p.cat.trim()
+              : 'Chưa phân loại',
+            price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
+          } satisfies Product;
+        });
         setProducts(normalized);
       })
       .catch(() => Alert.alert('Lỗi', 'Không tải được sản phẩm'))
@@ -175,8 +187,9 @@ export default function BulkOrderScreen() {
     });
   };
 
+  const searchTerm = search.trim().toLocaleLowerCase('vi');
   const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+    (p.name ?? '').toLocaleLowerCase('vi').includes(searchTerm)
   );
 
   const renderItem = ({ item }: { item: Product }) => {
