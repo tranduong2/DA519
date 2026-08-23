@@ -26,6 +26,11 @@ export default function InvoiceScreen() {
 
   const { checkedItems, orderCode, orderDate } = route.params;
 
+  // Giá được lưu ngầm cho bản in của admin; giao diện đặt sỉ không hiển thị tiền.
+  const totalPrice = checkedItems.reduce(
+    (sum, item) => sum + getPrice(item.product.price) * item.kg, 0
+  );
+
   // ─── Modal state ──────────────────────────────────────
   const [modal, setModal] = React.useState<{
     visible: boolean;
@@ -103,13 +108,13 @@ export default function InvoiceScreen() {
       await createBulkOrder(user.token, {
         orderCode,
         orderDate,
-        totalPrice: 0,
+        totalPrice,
         items: checkedItems.map(s => ({
           productId:   s.product.id,
           productName: s.product.name,
           kg:          s.kg,
-          pricePerKg:  0,
-          subtotal:    0,
+          pricePerKg:  getPrice(s.product.price),
+          subtotal:    getPrice(s.product.price) * s.kg,
           note:        s.note,
         })),
       });
