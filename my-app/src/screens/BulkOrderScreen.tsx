@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, TextInput, Alert, ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { getProducts } from '../services/api';
 import { useCartStore } from '@/store/cartStore';
@@ -35,6 +36,8 @@ type CustomItem = {
 };
 
 export default function BulkOrderScreen() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
   const navigation = useNavigation<NavProp>();
   const addToCart  = useCartStore(state => state.addToCart);
   const user       = useUserStore(state => state.user); // ✅ thêm
@@ -289,14 +292,16 @@ export default function BulkOrderScreen() {
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 160 }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListFooterComponent={(
           <View style={styles.customSection}>
-            <View style={styles.customHeader}>
+            <View style={[styles.customHeader, isMobile && styles.customHeaderMobile]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.customTitle}>➕ Sản phẩm khác</Text>
                 <Text style={styles.customSubtitle}>Không thấy món cần đặt? Hãy ghi từng món vào đây.</Text>
               </View>
-              <TouchableOpacity style={styles.customAddBtn} onPress={addCustomItem}>
+              <TouchableOpacity style={[styles.customAddBtn, isMobile && styles.customAddBtnMobile]} onPress={addCustomItem}>
                 <Text style={styles.customAddText}>+ Thêm món</Text>
               </TouchableOpacity>
             </View>
@@ -305,13 +310,13 @@ export default function BulkOrderScreen() {
                 <Text style={styles.customEmptyText}>Chạm để thêm món khác</Text>
               </TouchableOpacity>
             ) : customItems.map((item, index) => (
-              <View key={item.id} style={styles.customRow}>
+              <View key={item.id} style={[styles.customRow, isMobile && styles.customRowMobile]}>
                 <View style={styles.customNumber}><Text style={styles.customNumberText}>{index + 1}</Text></View>
-                <View style={styles.customFields}>
+                <View style={[styles.customFields, isMobile && styles.customFieldsMobile]}>
                   <TextInput style={styles.customNameInput} value={item.name} onChangeText={value => updateCustomItem(item.id, 'name', value)} placeholder="Tên món cần đặt *" placeholderTextColor="#9e9e9e" />
                   <TextInput style={styles.customNoteInput} value={item.note} onChangeText={value => updateCustomItem(item.id, 'note', value)} placeholder="Ghi chú (loại, kích thước...)" placeholderTextColor="#b0b0b0" />
                 </View>
-                <View style={styles.customQtyWrap}>
+                <View style={[styles.customQtyWrap, isMobile && styles.customQtyWrapMobile]}>
                   <TextInput style={styles.customQtyInput} value={item.kg} onChangeText={value => updateCustomItem(item.id, 'kg', value.replace(/[^0-9.,]/g, '').replace(',', '.'))} keyboardType="decimal-pad" />
                   <Text style={styles.customKg}>kg</Text>
                 </View>
@@ -392,20 +397,25 @@ const styles = StyleSheet.create({
 
   customSection: { margin: 12, marginTop: 18, padding: 14, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#a5d6a7' },
   customHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  customHeaderMobile: { alignItems: 'stretch', flexDirection: 'column' },
   customTitle: { fontSize: 16, fontWeight: '900', color: '#1b5e20' },
   customSubtitle: { fontSize: 11, color: '#78909c', marginTop: 3 },
   customAddBtn: { backgroundColor: '#2e7d32', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 9 },
+  customAddBtnMobile: { alignItems: 'center', alignSelf: 'stretch' },
   customAddText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   customEmpty: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#81c784', borderRadius: 10, padding: 16, alignItems: 'center' },
   customEmptyText: { color: '#2e7d32', fontWeight: '700', fontSize: 12 },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#e8f5e9' },
+  customRowMobile: { flexWrap: 'wrap', alignItems: 'flex-start', paddingVertical: 12 },
   customNumber: { width: 25, height: 25, borderRadius: 13, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   customNumberText: { color: '#2e7d32', fontWeight: '900', fontSize: 11 },
   customFields: { flex: 1, gap: 5 },
-  customNameInput: { borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 8, color: '#263238', fontSize: 13 },
-  customNoteInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, color: '#546e7a', fontSize: 11 },
+  customFieldsMobile: { flexBasis: '82%', minWidth: 0 },
+  customNameInput: { borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 8, color: '#263238', fontSize: 13, outlineStyle: 'none' } as any,
+  customNoteInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, color: '#546e7a', fontSize: 11, outlineStyle: 'none' } as any,
   customQtyWrap: { alignItems: 'center' },
-  customQtyInput: { width: 58, borderWidth: 1, borderColor: '#81c784', borderRadius: 8, paddingVertical: 8, textAlign: 'center', color: '#1b5e20', fontWeight: '900' },
+  customQtyWrapMobile: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 33, marginTop: 4 },
+  customQtyInput: { width: 58, borderWidth: 1, borderColor: '#81c784', borderRadius: 8, paddingVertical: 8, textAlign: 'center', color: '#1b5e20', fontWeight: '900', outlineStyle: 'none' } as any,
   customKg: { fontSize: 10, color: '#78909c', marginTop: 2 },
   customRemove: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#ffebee', alignItems: 'center', justifyContent: 'center' },
   customRemoveText: { color: '#c62828', fontWeight: '900' },
