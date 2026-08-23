@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, SafeAreaView, ScrollView, StyleSheet,
-  Text, TouchableOpacity, useWindowDimensions, View,
+  Alert, Platform, Share, Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -76,6 +76,28 @@ export default function AdminOrderDetailScreen() {
     finally { setSaving(false); }
   };
 
+  const printOrder = async () => {
+    const isNormalOrder = type === 'normal';
+    const rows = (order.items ?? []).map((item: any, index: number) => `
+      <tr><td>${index + 1}</td><td>${item.productName ?? ''}</td><td>${isNormalOrder ? item.quantity : `${item.kg} kg`}</td>${isNormalOrder ? `<td>${money(Number(item.price) * Number(item.quantity))}</td>` : ''}</tr>
+      ${item.note ? `<tr class="note"><td></td><td colspan="${isNormalOrder ? 3 : 2}">Ghi chú: ${item.note}</td></tr>` : ''}
+    `).join('');
+    const title = isNormalOrder ? `Đơn hàng ${order.orderCode}` : `Đơn sỉ - ${order.userName || 'Cửa hàng'}`;
+
+    if (Platform.OS === 'web') {
+      const printWindow = window.open('', '_blank', 'width=980,height=760');
+      if (!printWindow) { Alert.alert('Không thể in', 'Vui lòng cho phép trình duyệt mở cửa sổ mới.'); return; }
+      printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+        @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0}h1{color:#1b5e20;margin:0 0 6px;font-size:24px}.sub{color:#64748b;margin-bottom:20px}.info{border:1px solid #9ca3af;padding:12px;margin-bottom:16px;line-height:1.8}.status{font-weight:700;color:#1b5e20}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#2e7d32;color:#fff;text-align:left}th,td{border:1px solid #6b7280;padding:9px}th:first-child,td:first-child{width:55px;text-align:center}th:nth-child(3),td:nth-child(3){width:120px;text-align:center;font-weight:700}${isNormalOrder ? 'th:last-child,td:last-child{width:140px;text-align:right}' : ''}tr:nth-child(even){background:#f1f8e9}.note td{font-size:11px;font-style:italic;color:#6b7280;background:#fff}.total{margin-top:16px;text-align:right;font-size:18px;font-weight:800}.footer{margin-top:22px;color:#64748b;font-size:11px;text-align:center}@media print{button{display:none}}
+      </style></head><body><h1>🥦 FreshVeggies</h1><div class="sub">${title}</div><div class="info"><b>${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}:</b> ${order.userName || ''}<br>${isNormalOrder ? `<b>Số điện thoại:</b> ${order.userPhone || ''}<br><b>Địa chỉ:</b> ${order.shippingAddress || ''}<br>` : ''}<b>Ngày đặt:</b> ${new Date(order.createdAt).toLocaleString('vi-VN')}<br><b>Trạng thái:</b> <span class="status">${STATUS_LABELS[order.status] || order.status}</span></div><table><thead><tr><th>STT</th><th>SẢN PHẨM</th><th>SỐ LƯỢNG</th>${isNormalOrder ? '<th>THÀNH TIỀN</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>${isNormalOrder ? `<div class="total">Tổng thanh toán: ${money(order.totalAmount)}</div>` : ''}<div class="footer">Bản in từ hệ thống quản lý FreshVeggies</div><script>window.onload=()=>{window.print()}<\/script></body></html>`);
+      printWindow.document.close();
+      return;
+    }
+
+    const textRows = (order.items ?? []).map((item: any, i: number) => `${i + 1}. ${item.productName} - ${isNormalOrder ? item.quantity : `${item.kg} kg`}`).join('\n');
+    await Share.share({ title, message: `${title}\n${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}: ${order.userName || ''}\nTrạng thái: ${STATUS_LABELS[order.status] || order.status}\n\n${textRows}` });
+  };
+
   if (loading) {
     return <SafeAreaView style={s.page}><View style={s.center}><ActivityIndicator size="large" color="#2e7d32"/><Text style={s.loading}>Đang tải chi tiết đơn hàng...</Text></View></SafeAreaView>;
   }
@@ -102,6 +124,9 @@ export default function AdminOrderDetailScreen() {
             {isNormal ? order.orderCode : `🏪 ${order.userName || 'Chưa có tên cửa hàng'}`}
           </Text>
         </View>
+        <TouchableOpacity style={[s.printBtn, isMobile && s.printBtnMobile]} onPress={printOrder}>
+          <Text style={s.printBtnText}>🖨️ {isMobile ? 'In' : 'In đơn hàng'}</Text>
+        </TouchableOpacity>
         <View style={[s.badge, isMobile && s.badgeMobile, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
       </View>
 
@@ -177,6 +202,9 @@ const s = StyleSheet.create({
   backIcon: { fontSize: 31, lineHeight: 34, color: '#1b5e20', fontWeight: '500' },
   pageTitle: { fontSize: 19, fontWeight: '900', color: '#1b5e20' }, orderCode: { fontSize: 12, color: '#78909c', marginTop: 2 },
   headerStoreName: { fontSize: 14, color: '#2e7d32', fontWeight: '800', marginTop: 2 },
+  printBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#81c784', borderRadius: 9, paddingHorizontal: 13, paddingVertical: 8 },
+  printBtnMobile: { paddingHorizontal: 9, paddingVertical: 7 },
+  printBtnText: { color: '#1b5e20', fontWeight: '900', fontSize: 12 },
   badge: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 7 }, badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   badgeMobile: { paddingHorizontal: 8, paddingVertical: 6 },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: 18, paddingBottom: 42, gap: 16 },
