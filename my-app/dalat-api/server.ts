@@ -344,13 +344,23 @@ async function startServer() {
       try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+          return res.status(400).json({ message: "Vui lòng nhập đầy đủ email và mật khẩu" });
+        }
+
         const [rows] = await pool.query(
-          "SELECT * FROM users WHERE email = ? AND password = ?",
-          [email, password],
+          "SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
+          [String(email).trim()],
         ) as [any[], any];
 
         if (!Array.isArray(rows) || rows.length === 0) {
-          return res.status(401).json({ message: "Sai email hoặc mật khẩu" });
+          return res.status(401).json({ message: "Email chưa được đăng ký" });
+        }
+        if (rows[0].banned) {
+          return res.status(403).json({ message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên" });
+        }
+        if (rows[0].password !== password) {
+          return res.status(401).json({ message: "Mật khẩu không chính xác" });
         }
 
         const token = createToken();

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ScrollView, Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,10 +20,17 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email và mật khẩu');
+    setEmailError('');
+    setPasswordError('');
+    setLoginError('');
+    if (!email.trim()) setEmailError('Vui lòng nhập email.');
+    if (!password) setPasswordError('Vui lòng nhập mật khẩu.');
+    if (!email.trim() || !password) {
       return;
     }
     setLoading(true);
@@ -44,8 +51,15 @@ export default function LoginScreen() {
       });
 
     } catch (err: any) {
-      const msg = err.message ?? '';
-      Alert.alert('❌ Đăng nhập thất bại', msg || 'Có lỗi xảy ra, vui lòng thử lại.');
+      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+      const normalized = msg.toLowerCase();
+      if (normalized.includes('email') && (normalized.includes('chưa') || normalized.includes('không'))) {
+        setEmailError(msg);
+      } else if (normalized.includes('mật khẩu')) {
+        setPasswordError(msg);
+      } else {
+        setLoginError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -74,11 +88,18 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.title}>Dang nhap</Text>
-          <Text style={styles.subtitle}>Chao mung ban quay lai</Text>
+          <Text style={styles.title}>Đăng nhập</Text>
+          <Text style={styles.subtitle}>Chào mừng bạn quay lại</Text>
+
+          {!!loginError && (
+            <View style={styles.errorBanner} accessibilityLiveRegion="assertive">
+              <Text style={styles.errorBannerTitle}>Đăng nhập không thành công</Text>
+              <Text style={styles.errorBannerText}>{loginError}</Text>
+            </View>
+          )}
 
           <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, !!emailError && styles.inputError]}>
             <TextInput
               style={styles.input}
               placeholder="example@email.com"
@@ -86,24 +107,26 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => { setEmail(value); setEmailError(''); setLoginError(''); }}
             />
           </View>
+          {!!emailError && <Text style={styles.fieldError}>{emailError}</Text>}
 
-          <Text style={styles.label}>Mat khau</Text>
-          <View style={styles.inputWrap}>
+          <Text style={styles.label}>Mật khẩu</Text>
+          <View style={[styles.inputWrap, !!passwordError && styles.inputError]}>
             <TextInput
               style={styles.input}
-              placeholder="Nhap mat khau"
+              placeholder="Nhập mật khẩu"
               placeholderTextColor="#b0bfb0"
               secureTextEntry={!showPass}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(value) => { setPassword(value); setPasswordError(''); setLoginError(''); }}
             />
             <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Text style={styles.showPass}>{showPass ? 'An' : 'Hien'}</Text>
+              <Text style={styles.showPass}>{showPass ? 'Ẩn' : 'Hiện'}</Text>
             </TouchableOpacity>
           </View>
+          {!!passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
 
           <TouchableOpacity style={styles.forgotWrap}>
             <Text style={styles.forgot}>Quen mat khau?</Text>
@@ -116,7 +139,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.btnText}>
-              {loading ? 'Dang dang nhap...' : 'Dang nhap'}
+              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Text>
           </TouchableOpacity>
 
@@ -163,6 +186,11 @@ const styles = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f8e9', borderRadius: 14, paddingHorizontal: 12, height: 48, borderWidth: 1.5, borderColor: '#c8e6c9' },
   input: { flex: 1, fontSize: 14, color: '#2e7d32' },
   showPass: { fontSize: 13, color: '#388e3c', fontWeight: '600' },
+  inputError: { borderColor: '#ef9a9a', backgroundColor: '#fff7f7' },
+  fieldError: { color: '#c62828', fontSize: 12, marginTop: 5, marginLeft: 4 },
+  errorBanner: { backgroundColor: '#fff2f2', borderWidth: 1, borderColor: '#ef9a9a', borderRadius: 12, padding: 12, marginBottom: 10 },
+  errorBannerTitle: { color: '#b71c1c', fontSize: 13, fontWeight: '800', marginBottom: 3 },
+  errorBannerText: { color: '#c62828', fontSize: 12, lineHeight: 18 },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgot: { fontSize: 12, color: '#66bb6a', fontWeight: '600' },

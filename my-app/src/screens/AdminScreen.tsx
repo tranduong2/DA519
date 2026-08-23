@@ -192,15 +192,9 @@ export default function OrdersScreen() {
       {o.items.map((item, i) => (
         <View key={i} style={s.itemRow}>
           <Text style={s.itemName} numberOfLines={1}>{item.productName}</Text>
-          <Text style={s.itemKg}>{item.kg}kg</Text>
-          <Text style={s.itemPrice}>{Number(item.subtotal).toLocaleString('vi-VN')}đ</Text>
+          <Text style={s.itemKg}>Số lượng: {item.kg}</Text>
         </View>
       ))}
-      <View style={s.divider} />
-      <View style={s.row}>
-        <Text style={s.label}>💰 Tổng tiền</Text>
-        <Text style={[s.val, s.price]}>{fmtPrice(Number(o.totalPrice))}</Text>
-      </View>
       <TouchableOpacity
         style={s.updateBtn}
         onPress={(event) => {

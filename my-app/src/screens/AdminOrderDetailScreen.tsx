@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, SafeAreaView, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View,
+  Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -24,6 +24,8 @@ const money = (value: unknown) => `${Number(value ?? 0).toLocaleString('vi-VN')}
 
 export default function AdminOrderDetailScreen() {
   const navigation = useNavigation<DetailNav>();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
   const { orderId, type } = useRoute<DetailRoute>().params;
   const token = useUserStore(state => state.token);
   const [order, setOrder] = useState<any>(null);
@@ -73,18 +75,18 @@ export default function AdminOrderDetailScreen() {
   }
 
   const isNormal = type === 'normal';
-  const total = isNormal ? order.totalAmount : order.totalPrice;
+  const total = order.totalAmount;
 
   return (
     <SafeAreaView style={s.page}>
-      <View style={s.topBar}>
+      <View style={[s.topBar, isMobile && s.topBarMobile]}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
         <View style={{ flex: 1 }}><Text style={s.pageTitle}>Chi tiết đơn hàng</Text><Text style={s.orderCode}>{order.orderCode}</Text></View>
-        <View style={[s.badge, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
+        <View style={[s.badge, isMobile && s.badgeMobile, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
       </View>
 
-      <ScrollView contentContainerStyle={s.content}>
-        <View style={s.customerCard}>
+      <ScrollView contentContainerStyle={[s.content, isMobile && s.contentMobile]}>
+        <View style={[s.customerCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>Thông tin khách hàng</Text>
           <Text style={s.customerName}>👤 {order.userName || 'Chưa có tên khách hàng'}</Text>
           <Text style={s.info}>📞 {order.userPhone || 'Chưa có số điện thoại'}</Text>
@@ -93,24 +95,26 @@ export default function AdminOrderDetailScreen() {
           <Text style={s.info}>📅 {new Date(order.createdAt).toLocaleString('vi-VN')}</Text>
         </View>
 
-        <View style={s.itemsCard}>
+        <View style={[s.itemsCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>Sản phẩm đã đặt ({order.items?.length ?? 0})</Text>
           {(order.items ?? []).map((item: any, index: number) => (
-            <View key={item.id ?? index} style={s.itemRow}>
+            <View key={item.id ?? index} style={[s.itemRow, isMobile && s.itemRowMobile]}>
               <View style={{ flex: 1 }}>
                 <Text style={s.itemName}>{item.productName}</Text>
-                <Text style={s.itemMeta}>{isNormal ? `Số lượng: ${item.quantity}` : `Khối lượng: ${item.kg} kg`}</Text>
+                <Text style={s.itemMeta}>Số lượng: {isNormal ? item.quantity : item.kg}</Text>
                 {item.note ? <Text style={s.note}>Ghi chú: {item.note}</Text> : null}
               </View>
-              <Text style={s.itemPrice}>{money(isNormal ? Number(item.price) * Number(item.quantity) : item.subtotal)}</Text>
+              {isNormal ? <Text style={s.itemPrice}>{money(Number(item.price) * Number(item.quantity))}</Text> : null}
             </View>
           ))}
         </View>
 
-        <View style={s.summaryCard}>
-          {isNormal ? <View style={s.summaryRow}><Text style={s.summaryLabel}>Thanh toán</Text><Text style={s.summaryValue}>{order.paymentMethod === 'cod' ? 'Khi nhận hàng (COD)' : 'Chuyển khoản'}</Text></View> : null}
-          <View style={s.totalRow}><Text style={s.totalLabel}>Tổng thanh toán</Text><Text style={s.totalValue}>{money(total)}</Text></View>
-        </View>
+        {isNormal ? (
+          <View style={[s.summaryCard, isMobile && s.cardMobile]}>
+            <View style={[s.summaryRow, isMobile && s.summaryRowMobile]}><Text style={s.summaryLabel}>Thanh toán</Text><Text style={s.summaryValue}>{order.paymentMethod === 'cod' ? 'Khi nhận hàng (COD)' : 'Chuyển khoản'}</Text></View>
+            <View style={[s.totalRow, isMobile && s.summaryRowMobile]}><Text style={s.totalLabel}>Tổng thanh toán</Text><Text style={s.totalValue}>{money(total)}</Text></View>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -121,17 +125,23 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   loading: { color: '#607d8b', marginTop: 12 }, error: { color: '#c62828', textAlign: 'center', marginBottom: 18 },
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e0eee0' },
+  topBarMobile: { paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
   backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 31, lineHeight: 34, color: '#1b5e20', fontWeight: '500' },
   pageTitle: { fontSize: 19, fontWeight: '900', color: '#1b5e20' }, orderCode: { fontSize: 12, color: '#78909c', marginTop: 2 },
   badge: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 7 }, badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  badgeMobile: { paddingHorizontal: 8, paddingVertical: 6 },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: 18, paddingBottom: 42, gap: 16 },
+  contentMobile: { padding: 10, paddingBottom: 30, gap: 10 },
+  cardMobile: { borderRadius: 12, padding: 13 },
   customerCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, borderLeftWidth: 5, borderLeftColor: '#2e7d32' },
   sectionTitle: { fontSize: 15, fontWeight: '900', color: '#1b5e20', marginBottom: 12 },
   customerName: { fontSize: 15, fontWeight: '800', color: '#263238', marginBottom: 7 }, info: { fontSize: 13, color: '#546e7a', lineHeight: 22 },
   itemsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#edf4ed' },
+  itemRowMobile: { alignItems: 'flex-start', gap: 7 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
   summaryCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 13 }, summaryLabel: { color: '#607d8b' }, summaryValue: { color: '#263238', fontWeight: '700' },
+  summaryRowMobile: { gap: 12, flexWrap: 'wrap' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 2, borderTopColor: '#e8f5e9', paddingTop: 14 }, totalLabel: { fontSize: 15, fontWeight: '800', color: '#37474f' }, totalValue: { fontSize: 20, fontWeight: '900', color: '#e65100' },
   primaryBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingHorizontal: 25, paddingVertical: 12 }, primaryText: { color: '#fff', fontWeight: '800' },
   secondaryBtn: { marginTop: 10, padding: 10 }, secondaryText: { color: '#2e7d32', fontWeight: '700' },
