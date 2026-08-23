@@ -9,5 +9,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["server.ts"]
+  "include": ["server.ts", "postgresCompat.ts"]
 }
