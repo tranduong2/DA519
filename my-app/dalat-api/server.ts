@@ -979,7 +979,7 @@ async function startServer() {
           const status = req.query.status ? String(req.query.status) : undefined;
 
           let query = `
-          SELECT bo.*, COALESCE(NULLIF(u.username, ''), u.email) as userName,
+          SELECT bo.*, u.name as userName,
                  u.phone as userPhone, u.email as userEmail
           FROM bulk_orders bo
           JOIN users u ON bo.userId = u.id
