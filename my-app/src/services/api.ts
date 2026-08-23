@@ -1,7 +1,7 @@
 
 // EXPO_PUBLIC_API_URL is supplied by the deployment environment. The fallback
 // keeps the local mobile development workflow working until a production URL is set.
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "https://da519.onrender.com";
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://da519.onrender.com";
 
 // ─── Products ───────────────────────────────────────────
 export const getProducts = async () => {
