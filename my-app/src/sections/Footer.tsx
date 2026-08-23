@@ -22,9 +22,10 @@ export default function Footer() {
         ))}
         <View style={styles.col}>
           <Text style={styles.colTitle}>Liên Hệ</Text>
-          <Text style={styles.colItem}>📍 123 Đường Xanh, Q.1, TP.HCM</Text>
-          <Text style={styles.colItem}>📞 0901 234 567</Text>
-          <Text style={styles.colItem}>✉️ hello@freshveggies.vn</Text>
+          <Text style={styles.colItem}>📍 60 Trần Nhân Tông,Liên Nghĩa,Đức Trọng, Lâm Đồng</Text>
+          <Text style={styles.colItem}>📞 0914960478</Text>
+          <Text style={styles.colItem}>📞 0918748568</Text>
+          <Text style={styles.colItem}>✉️ nd141003@gmail.com</Text>
         </View>
       </View>
       <View style={styles.divider} />
