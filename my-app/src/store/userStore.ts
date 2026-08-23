@@ -52,6 +52,7 @@ type AuthStore = {
   isAuthenticating: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  rememberLogin: boolean;
   hasHydrated: boolean;
   setUser: (user: SessionUser) => void;
   clearUser: () => void;
@@ -59,6 +60,7 @@ type AuthStore = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
+  setRememberLogin: (remember: boolean) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
 };
 
@@ -70,6 +72,7 @@ export const useUserStore = create<AuthStore>()(
       isAuthenticating: false,
       error: null,
       isAuthenticated: false,
+      rememberLogin: true,
       hasHydrated: false,
 
       setUser: (user) =>
@@ -153,15 +156,17 @@ export const useUserStore = create<AuthStore>()(
       },
 
       clearError: () => set({ error: null }),
+      setRememberLogin: (rememberLogin) => set({ rememberLogin }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
     }),
     {
       name: 'user-storage',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
+        user: state.rememberLogin ? state.user : null,
+        token: state.rememberLogin ? state.token : null,
+        isAuthenticated: state.rememberLogin ? state.isAuthenticated : false,
+        rememberLogin: state.rememberLogin,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

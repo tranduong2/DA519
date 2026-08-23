@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -9,12 +9,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { loginUser } from '../services/authService';
 import { useUserStore } from '@/store/userStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavProp>();
   const setUser = useUserStore(state => state.setUser);
+  const rememberLogin = useUserStore(state => state.rememberLogin);
+  const setRememberLogin = useUserStore(state => state.setRememberLogin);
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +26,20 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem('remembered-login-email')
+      .then((savedEmail) => {
+        if (rememberLogin && savedEmail) setEmail(savedEmail);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const toggleRememberLogin = () => {
+    const nextValue = !rememberLogin;
+    setRememberLogin(nextValue);
+    if (!nextValue) AsyncStorage.removeItem('remembered-login-email').catch(() => undefined);
+  };
 
   const handleForgotPassword = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -61,6 +78,12 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await loginUser({ email, password });
+
+      if (rememberLogin) {
+        await AsyncStorage.setItem('remembered-login-email', email.trim().toLowerCase());
+      } else {
+        await AsyncStorage.removeItem('remembered-login-email');
+      }
 
       setUser({
         username: response.user?.name ?? response.user?.username ?? email,
@@ -140,6 +163,8 @@ export default function LoginScreen() {
               placeholderTextColor="#b0bfb0"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="username"
               value={email}
               onChangeText={(value) => { setEmail(value); setEmailError(''); setLoginError(''); }}
             />
@@ -153,6 +178,8 @@ export default function LoginScreen() {
               placeholder="Nhập mật khẩu"
               placeholderTextColor="#b0bfb0"
               secureTextEntry={!showPass}
+              autoComplete="current-password"
+              textContentType="password"
               value={password}
               onChangeText={(value) => { setPassword(value); setPasswordError(''); setLoginError(''); }}
             />
@@ -162,9 +189,17 @@ export default function LoginScreen() {
           </View>
           {!!passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
 
-          <TouchableOpacity style={styles.forgotWrap} onPress={handleForgotPassword}>
-            <Text style={styles.forgot}>Quên mật khẩu?</Text>
-          </TouchableOpacity>
+          <View style={styles.loginOptions}>
+            <TouchableOpacity style={styles.rememberWrap} onPress={toggleRememberLogin} accessibilityRole="checkbox" accessibilityState={{ checked: rememberLogin }}>
+              <View style={[styles.checkbox, rememberLogin && styles.checkboxChecked]}>
+                {rememberLogin && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.forgotWrap} onPress={handleForgotPassword}>
+              <Text style={styles.forgot}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnLoading]}
@@ -229,7 +264,13 @@ const styles = StyleSheet.create({
   errorBannerTitle: { color: '#b71c1c', fontSize: 13, fontWeight: '800', marginBottom: 3 },
   errorBannerText: { color: '#c62828', fontSize: 12, lineHeight: 18 },
 
-  forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
+  loginOptions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12, flexWrap: 'wrap' },
+  rememberWrap: { flexDirection: 'row', alignItems: 'center', minHeight: 32 },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: '#81c784', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 7 },
+  checkboxChecked: { backgroundColor: '#2e7d32', borderColor: '#2e7d32' },
+  checkmark: { color: '#fff', fontSize: 13, fontWeight: '900', lineHeight: 16 },
+  rememberText: { fontSize: 12, color: '#388e3c', fontWeight: '600' },
+  forgotWrap: { minHeight: 32, justifyContent: 'center' },
   forgot: { fontSize: 12, color: '#66bb6a', fontWeight: '600' },
 
   btn: { marginTop: 22, backgroundColor: '#2e7d32', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', shadowColor: '#2e7d32', shadowOpacity: 0.35, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
