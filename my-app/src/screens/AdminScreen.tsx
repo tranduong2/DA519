@@ -182,17 +182,19 @@ export default function OrdersScreen() {
     >
       <View style={s.cardTop}>
         <View style={{ flex: 1 }}>
-          <Text style={s.code}>{o.orderCode}</Text>
-          <Text style={s.meta}>👤 {o.userName}  📞 {o.userPhone}</Text>
-          <Text style={s.meta}>📅 {o.orderDate}</Text>
+          <Text style={s.storeLabel}>CỬA HÀNG ĐẶT ĐƠN</Text>
+          <Text style={s.storeName}>🏪 {o.userName || 'Chưa có tên cửa hàng'}</Text>
         </View>
         {renderBadge(o.status)}
       </View>
       <View style={s.divider} />
       {o.items.map((item, i) => (
-        <View key={i} style={s.itemRow}>
-          <Text style={s.itemName} numberOfLines={1}>{item.productName}</Text>
-          <Text style={s.itemKg}>Số lượng: {item.kg}</Text>
+        <View key={i} style={s.bulkItemRow}>
+          <Text style={s.bulkItemName} numberOfLines={2}>{item.productName}</Text>
+          <View style={s.quantityBox}>
+            <Text style={s.quantityLabel}>SỐ LƯỢNG</Text>
+            <Text style={s.quantityValue}>{item.kg}</Text>
+          </View>
         </View>
       ))}
       <TouchableOpacity
@@ -410,6 +412,13 @@ const s = StyleSheet.create({
   itemName:  { flex: 1, fontSize: 12, color: '#333', fontWeight: '600' },
   itemKg:    { fontSize: 12, color: '#666', width: 40, textAlign: 'right' },
   itemPrice: { fontSize: 12, color: '#e65100', fontWeight: '700', width: 80, textAlign: 'right' },
+  storeLabel: { fontSize: 10, color: '#78909c', fontWeight: '800', letterSpacing: 0.8, marginBottom: 4 },
+  storeName: { fontSize: 18, color: '#1b5e20', fontWeight: '900' },
+  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
+  bulkItemName: { flex: 1, fontSize: 17, lineHeight: 23, color: '#263238', fontWeight: '900' },
+  quantityBox: { minWidth: 86, backgroundColor: '#e8f5e9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
+  quantityLabel: { fontSize: 9, color: '#558b2f', fontWeight: '800', letterSpacing: 0.6 },
+  quantityValue: { fontSize: 24, color: '#1b5e20', fontWeight: '900', lineHeight: 29 },
   updateBtn:     { backgroundColor: '#e8f5e9', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 10 },
   updateBtnText: { color: '#2e7d32', fontWeight: '700', fontSize: 13 },
   viewHint: { color: '#78909c', fontSize: 11, textAlign: 'center', marginTop: 9 },

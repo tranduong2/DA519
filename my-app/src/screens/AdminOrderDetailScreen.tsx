@@ -81,30 +81,48 @@ export default function AdminOrderDetailScreen() {
     <SafeAreaView style={s.page}>
       <View style={[s.topBar, isMobile && s.topBarMobile]}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
-        <View style={{ flex: 1 }}><Text style={s.pageTitle}>Chi tiết đơn hàng</Text><Text style={s.orderCode}>{order.orderCode}</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.pageTitle}>{isNormal ? 'Chi tiết đơn hàng' : 'Chi tiết đơn sỉ'}</Text>
+          <Text style={isNormal ? s.orderCode : s.headerStoreName}>
+            {isNormal ? order.orderCode : `🏪 ${order.userName || 'Chưa có tên cửa hàng'}`}
+          </Text>
+        </View>
         <View style={[s.badge, isMobile && s.badgeMobile, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
       </View>
 
       <ScrollView contentContainerStyle={[s.content, isMobile && s.contentMobile]}>
-        <View style={[s.customerCard, isMobile && s.cardMobile]}>
-          <Text style={s.sectionTitle}>Thông tin khách hàng</Text>
-          <Text style={s.customerName}>👤 {order.userName || 'Chưa có tên khách hàng'}</Text>
-          <Text style={s.info}>📞 {order.userPhone || 'Chưa có số điện thoại'}</Text>
-          <Text style={s.info}>📧 {order.userEmail || 'Chưa có email'}</Text>
-          {order.shippingAddress ? <Text style={s.info}>📍 {order.shippingAddress}</Text> : null}
-          <Text style={s.info}>📅 {new Date(order.createdAt).toLocaleString('vi-VN')}</Text>
-        </View>
+        {isNormal ? (
+          <View style={[s.customerCard, isMobile && s.cardMobile]}>
+            <Text style={s.sectionTitle}>Thông tin khách hàng</Text>
+            <Text style={s.customerName}>👤 {order.userName || 'Chưa có tên khách hàng'}</Text>
+            <Text style={s.info}>📞 {order.userPhone || 'Chưa có số điện thoại'}</Text>
+            <Text style={s.info}>📧 {order.userEmail || 'Chưa có email'}</Text>
+            {order.shippingAddress ? <Text style={s.info}>📍 {order.shippingAddress}</Text> : null}
+            <Text style={s.info}>📅 {new Date(order.createdAt).toLocaleString('vi-VN')}</Text>
+          </View>
+        ) : (
+          <View style={[s.storeCard, isMobile && s.cardMobile]}>
+            <Text style={s.storeCardLabel}>CỬA HÀNG ĐẶT ĐƠN</Text>
+            <Text style={s.storeCardName}>🏪 {order.userName || 'Chưa có tên cửa hàng'}</Text>
+          </View>
+        )}
 
         <View style={[s.itemsCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>Sản phẩm đã đặt ({order.items?.length ?? 0})</Text>
           {(order.items ?? []).map((item: any, index: number) => (
-            <View key={item.id ?? index} style={[s.itemRow, isMobile && s.itemRowMobile]}>
+            <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, isMobile && s.itemRowMobile]}>
               <View style={{ flex: 1 }}>
-                <Text style={s.itemName}>{item.productName}</Text>
-                <Text style={s.itemMeta}>Số lượng: {isNormal ? item.quantity : item.kg}</Text>
+                <Text style={isNormal ? s.itemName : s.bulkItemName}>{item.productName}</Text>
+                {isNormal ? <Text style={s.itemMeta}>Số lượng: {item.quantity}</Text> : null}
                 {item.note ? <Text style={s.note}>Ghi chú: {item.note}</Text> : null}
               </View>
               {isNormal ? <Text style={s.itemPrice}>{money(Number(item.price) * Number(item.quantity))}</Text> : null}
+              {!isNormal ? (
+                <View style={s.quantityBox}>
+                  <Text style={s.quantityLabel}>SỐ LƯỢNG</Text>
+                  <Text style={s.quantityValue}>{item.kg}</Text>
+                </View>
+              ) : null}
             </View>
           ))}
         </View>
@@ -129,17 +147,25 @@ const s = StyleSheet.create({
   backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 31, lineHeight: 34, color: '#1b5e20', fontWeight: '500' },
   pageTitle: { fontSize: 19, fontWeight: '900', color: '#1b5e20' }, orderCode: { fontSize: 12, color: '#78909c', marginTop: 2 },
+  headerStoreName: { fontSize: 14, color: '#2e7d32', fontWeight: '800', marginTop: 2 },
   badge: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 7 }, badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   badgeMobile: { paddingHorizontal: 8, paddingVertical: 6 },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: 18, paddingBottom: 42, gap: 16 },
   contentMobile: { padding: 10, paddingBottom: 30, gap: 10 },
   cardMobile: { borderRadius: 12, padding: 13 },
   customerCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, borderLeftWidth: 5, borderLeftColor: '#2e7d32' },
+  storeCard: { backgroundColor: '#e8f5e9', borderRadius: 16, padding: 18, borderLeftWidth: 5, borderLeftColor: '#2e7d32' },
+  storeCardLabel: { fontSize: 10, color: '#558b2f', fontWeight: '900', letterSpacing: 0.9, marginBottom: 6 },
+  storeCardName: { fontSize: 22, color: '#1b5e20', fontWeight: '900' },
   sectionTitle: { fontSize: 15, fontWeight: '900', color: '#1b5e20', marginBottom: 12 },
   customerName: { fontSize: 15, fontWeight: '800', color: '#263238', marginBottom: 7 }, info: { fontSize: 13, color: '#546e7a', lineHeight: 22 },
   itemsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#edf4ed' },
+  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
   itemRowMobile: { alignItems: 'flex-start', gap: 7 },
-  itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
+  itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
+  quantityBox: { minWidth: 92, backgroundColor: '#e8f5e9', borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center' },
+  quantityLabel: { fontSize: 9, color: '#558b2f', fontWeight: '900', letterSpacing: 0.7 },
+  quantityValue: { fontSize: 27, lineHeight: 32, color: '#1b5e20', fontWeight: '900' },
   summaryCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 13 }, summaryLabel: { color: '#607d8b' }, summaryValue: { color: '#263238', fontWeight: '700' },
   summaryRowMobile: { gap: 12, flexWrap: 'wrap' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 2, borderTopColor: '#e8f5e9', paddingTop: 14 }, totalLabel: { fontSize: 15, fontWeight: '800', color: '#37474f' }, totalValue: { fontSize: 20, fontWeight: '900', color: '#e65100' },

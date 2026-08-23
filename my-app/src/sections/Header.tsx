@@ -265,6 +265,13 @@ export default function Header() {
                   </TouchableOpacity>
                 ))}
                 <View style={styles.menuDivider} />
+                <TouchableOpacity
+                  style={[styles.menuItem, styles.menuItemLogout]}
+                  onPress={() => handleMenuAction('logout')}
+                >
+                  <Text style={styles.menuItemIcon}>🚪</Text>
+                  <Text style={[styles.menuItemText, styles.menuItemTextLogout]}>Đăng xuất</Text>
+                </TouchableOpacity>
               </>
             ) : null}
 
