@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View, Text, StyleSheet, Image, TouchableOpacity,
+  View, Text, StyleSheet, Image, TouchableOpacity, Animated,
   ScrollView, SafeAreaView, useWindowDimensions, Platform,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -148,6 +148,25 @@ export default function ProductDetailScreen() {
 
   const mainSource = getImageSourceByFileName(product.imageUrl) ?? getImageSource(product.image);
   const [selectedSource, setSelectedSource] = useState(mainSource);
+  const [imageZoomed, setImageZoomed] = useState(false);
+  const imageScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    setSelectedSource(mainSource);
+    setImageZoomed(false);
+    imageScale.setValue(1);
+  }, [product.id]);
+
+  const toggleImageZoom = () => {
+    const next = !imageZoomed;
+    setImageZoomed(next);
+    Animated.spring(imageScale, {
+      toValue: next ? 1.75 : 1,
+      friction: 8,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleQuickAdd = () => {
     addToCart(product, quantity);
@@ -178,12 +197,17 @@ export default function ProductDetailScreen() {
             <View style={[styles.imageCol, isWeb && styles.imageColWeb]}>
               <View style={styles.imageWrap}>
                 {selectedSource ? (
-                  <Image source={selectedSource} style={styles.mainImage} resizeMode="contain" />
+                  <TouchableOpacity style={styles.zoomTouch} onPress={toggleImageZoom} activeOpacity={0.96}>
+                    <Animated.Image source={selectedSource} style={[styles.mainImage, { transform: [{ scale: imageScale }] }]} resizeMode="contain" />
+                  </TouchableOpacity>
                 ) : (
                   <View style={styles.mainImagePlaceholder}>
                     <Text style={{ fontSize: 52 }}>🥦</Text>
                   </View>
                 )}
+                <View pointerEvents="none" style={styles.zoomHint}>
+                  <Text style={styles.zoomHintText}>{imageZoomed ? "Chạm để thu nhỏ" : "🔍 Chạm để phóng to"}</Text>
+                </View>
 
                 <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                   <Text style={styles.backArrow}>‹</Text>
@@ -206,7 +230,7 @@ export default function ProductDetailScreen() {
                 {[mainSource, mainSource, mainSource].map((src, i) => (
                   <TouchableOpacity key={i}
                     style={[styles.thumbWrap, selectedSource === src && styles.thumbWrapActive]}
-                    onPress={() => setSelectedSource(src)}>
+                    onPress={() => { setSelectedSource(src); setImageZoomed(false); Animated.spring(imageScale, { toValue: 1, useNativeDriver: true }).start(); }}>
                     {src ? (
                       <Image source={src} style={styles.thumb} resizeMode="cover" />
                     ) : (
@@ -348,8 +372,11 @@ const styles = StyleSheet.create({
   // Image column
   imageCol:    { backgroundColor: "#fff" },
   imageColWeb: { flex: 1, maxWidth: 440 },
-  imageWrap:   { position: "relative", backgroundColor: "#FAFAFA" },
+  imageWrap:   { position: "relative", backgroundColor: "#FAFAFA", overflow: "hidden" },
+  zoomTouch:   { width: "100%", aspectRatio: 1, overflow: "hidden" },
   mainImage:   { width: "100%", aspectRatio: 1 },
+  zoomHint: { position: "absolute", bottom: 12, alignSelf: "center", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 18, paddingHorizontal: 11, paddingVertical: 6 },
+  zoomHintText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   mainImagePlaceholder: { width: "100%", aspectRatio: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F5F5F5" },
 
   backBtn: {
