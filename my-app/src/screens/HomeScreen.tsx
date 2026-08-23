@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
+import React, { useRef } from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -21,6 +23,29 @@ import { CategoryProvider, useCategory } from '@/context/CategoryContext';
 import { useProducts } from '@/hooks/useProducts';
 import { useUserStore } from '@/store/userStore';
 import { useCartStore } from '@/store/cartStore';
+
+function HomeProductCard({ item, cardWidth, onAdd }: { item: any; cardWidth: any; onAdd: () => void }) {
+  const navigation = useNavigation<any>();
+  const scale = useRef(new Animated.Value(1)).current;
+  const animate = (toValue: number) => Animated.spring(scale, { toValue, friction: 7, tension: 90, useNativeDriver: true }).start();
+  const openDetail = () => navigation.navigate('ProductDetail', { product: item });
+
+  return (
+    <View style={[styles.card, { width: cardWidth }]}>
+      <TouchableOpacity activeOpacity={0.92} onPress={openDetail} onPressIn={() => animate(1.08)} onPressOut={() => animate(1)} style={styles.imageWrapper}>
+        <Animated.Image source={item.image} style={[styles.cardImage, { transform: [{ scale }] }]} resizeMode="cover" />
+        {item.oldPrice && <View style={styles.saleBadge}><Text style={styles.saleBadgeText}>SALE</Text></View>}
+        <View style={styles.imageDetailHint}><Text style={styles.imageDetailHintText}>Xem chi tiết</Text></View>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={openDetail} activeOpacity={0.7}><Text style={styles.cardName} numberOfLines={2}>{item.name}</Text></TouchableOpacity>
+      <View style={styles.priceRow}><Text style={styles.cardPrice}>{Number(item.price).toLocaleString('vi-VN')}đ</Text>{item.oldPrice ? <Text style={styles.cardOldPrice}>{Number(item.oldPrice).toLocaleString('vi-VN')}đ</Text> : null}</View>
+      <View style={styles.btnRow}>
+        <TouchableOpacity style={styles.btnCart} onPress={onAdd}><Text style={styles.btnCartText}>🛒</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.btnDetail} onPress={openDetail}><Text style={styles.btnDetailText}>Chi tiết</Text></TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 function FeaturedGrid() {
   const navigation = useNavigation<any>();
@@ -50,43 +75,7 @@ function FeaturedGrid() {
 
   return (
     <View style={styles.row}>
-      {products.map((item) => (
-        <View key={item.id} style={[styles.card, { width: cardWidth }]}>
-          <View style={styles.imageWrapper}>
-            <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-            {item.oldPrice && (
-              <View style={styles.saleBadge}>
-                <Text style={styles.saleBadgeText}>SALE</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.cardPrice}>
-              {Number(item.price).toLocaleString('vi-VN')}đ
-            </Text>
-            {item.oldPrice ? (
-              <Text style={styles.cardOldPrice}>
-                {Number(item.oldPrice).toLocaleString('vi-VN')}đ
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.btnRow}>
-            <TouchableOpacity
-              style={styles.btnCart}
-              onPress={() => addToCart(item, 1)}
-            >
-              <Text style={styles.btnCartText}>🛒</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.btnDetail}
-              onPress={() => navigation.navigate('ProductDetail', { product: item })}
-            >
-              <Text style={styles.btnDetailText}>Chi tiết</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
+      {products.map((item) => <HomeProductCard key={item.id} item={item} cardWidth={cardWidth} onAdd={() => addToCart(item, 1)} />)}
     </View>
   );
 }
@@ -98,7 +87,7 @@ export default function HomeScreen() {
 
   return (
     <CategoryProvider>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         <View style={[styles.userBox, user?.role === 'admin' && styles.adminBox]}>
           <Text style={[styles.helloText, user?.role === 'admin' && styles.adminText]}>Xin chào 👋</Text>
@@ -160,7 +149,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { backgroundColor: '#f9fbe7' },
+  scroll: { backgroundColor: '#f9fbe7', width: '100%', maxWidth: '100%', overflow: 'hidden' },
+  scrollContent: { width: '100%', maxWidth: '100%', overflow: 'hidden' },
 
   userBox:   { padding: 12 },
   adminBox:  { backgroundColor: '#d32f2f' },
@@ -183,6 +173,9 @@ const styles = StyleSheet.create({
   mobileContent: {
     paddingHorizontal: 10,
     marginTop: 8,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
 
   section: { paddingBottom: 16 },
@@ -226,6 +219,8 @@ const styles = StyleSheet.create({
   },
 
   cardImage: { width: '100%', height: '100%' },
+  imageDetailHint: { position: 'absolute', left: 6, right: 6, bottom: 6, backgroundColor: 'rgba(27,94,32,0.78)', borderRadius: 7, paddingVertical: 4, alignItems: 'center' },
+  imageDetailHintText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
   saleBadge: {
     position: 'absolute', top: 4, left: 4,

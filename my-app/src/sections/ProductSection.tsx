@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, Image, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions, DimensionValue,
+  ActivityIndicator, useWindowDimensions, DimensionValue, Animated,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BASE_URL } from "@/services/api";
@@ -47,12 +47,15 @@ function ProductCard({ item, isAdded, onAdd, cardWidth }: {
   const src = getImageSourceByFileName(item.imageUrl) ?? getImageSource(item.image);
   const price    = Number(item.salePrice ?? item.price ?? 0);
   const oldPrice = item.oldPrice ? Number(item.oldPrice) : null;
+  const imageScale = useRef(new Animated.Value(1)).current;
+  const animateImage = (toValue: number) => Animated.spring(imageScale, { toValue, friction: 7, tension: 90, useNativeDriver: true }).start();
+  const openDetail = () => navigation.navigate("ProductDetail", { product: item });
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
-      <View style={styles.imageWrapper}>
+      <TouchableOpacity style={styles.imageWrapper} onPress={openDetail} onPressIn={() => animateImage(1.08)} onPressOut={() => animateImage(1)} activeOpacity={0.92}>
         {src ? (
-          <Image source={src} style={styles.cardImage} resizeMode="cover" />
+          <Animated.Image source={src} style={[styles.cardImage, { transform: [{ scale: imageScale }] }]} resizeMode="cover" />
         ) : (
           <View style={styles.cardImgPlaceholder}>
             <Text style={{ fontSize: 28 }}>🥦</Text>
@@ -63,9 +66,10 @@ function ProductCard({ item, isAdded, onAdd, cardWidth }: {
             <Text style={styles.saleBadgeText}>SALE</Text>
           </View>
         )}
-      </View>
+        <View style={styles.imageDetailHint}><Text style={styles.imageDetailHintText}>Xem chi tiết</Text></View>
+      </TouchableOpacity>
 
-      <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
+      <TouchableOpacity onPress={openDetail} activeOpacity={0.7}><Text style={styles.cardName} numberOfLines={2}>{item.name}</Text></TouchableOpacity>
 
       <View style={styles.priceRow}>
         <Text style={styles.cardPrice}>
@@ -88,7 +92,7 @@ function ProductCard({ item, isAdded, onAdd, cardWidth }: {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.btnDetail}
-          onPress={() => navigation.navigate("ProductDetail", { product: item })}
+          onPress={openDetail}
           activeOpacity={0.85}
         >
           <Text style={styles.btnDetailText}>Chi tiết</Text>
@@ -203,7 +207,7 @@ export default function ProductSection() {
 }
 
 const styles = StyleSheet.create({
-  wrap: {},
+  wrap: { width: "100%", maxWidth: "100%", overflow: "hidden" },
 
   sectionHeader: {
     flexDirection: "row", alignItems: "center",
@@ -234,6 +238,8 @@ const styles = StyleSheet.create({
     marginBottom: 6, position: "relative",
   },
   cardImage:          { width: "100%", height: "100%" },
+  imageDetailHint: { position: "absolute", left: 6, right: 6, bottom: 6, backgroundColor: "rgba(27,94,32,0.78)", borderRadius: 7, paddingVertical: 4, alignItems: "center" },
+  imageDetailHintText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   cardImgPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   saleBadge: {
