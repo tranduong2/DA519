@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ScrollView, Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,14 +46,15 @@ export default function RegisterScreen() {
   const [loading,  setLoading]  = useState(false);
   const [agreed,   setAgreed]   = useState(false);
   const [touched,  setTouched]  = useState<Record<string, boolean>>({});
+  const [serverError, setServerError] = useState('');
+  const [emailServerError, setEmailServerError] = useState('');
 
   const touch = (field: string) => setTouched(p => ({ ...p, [field]: true }));
 
-  const nameErr    = name.trim().length < 2 ? 'Ho ten phai co it nhat 2 ky tu' : '';
-  const emailErr   = !emailRx.test(email)   ? 'Email phai la dia chi @gmail.com' : '';
-  // const phoneErr   = !/^(0|\+84)[0-9]{8,10}$/.test(phone) ? 'So dien thoai khong hop le' : '';
-  const phoneErr   =  '';
-  const confirmErr = confirm !== password   ? 'Mat khau khong khop' : '';
+  const nameErr    = name.trim().length < 2 ? 'Họ tên phải có ít nhất 2 ký tự.' : '';
+  const emailErr   = !emailRx.test(email)   ? 'Vui lòng nhập địa chỉ Gmail hợp lệ.' : emailServerError;
+  const phoneErr   = !/^(0|\+84)[0-9]{8,10}$/.test(phone.replace(/\s/g, '')) ? 'Số điện thoại không hợp lệ.' : '';
+  const confirmErr = confirm !== password   ? 'Mật khẩu xác nhận không khớp.' : '';
 
   const pwErrors: string[] = [];
   if (password.length < 8)       pwErrors.push('it nhat 8 ky tu');
@@ -66,7 +67,8 @@ export default function RegisterScreen() {
                   pwErrors.length === 0 && !confirmErr && agreed;
 
   const handleRegister = async () => {
-    setTouched({ name: true, email: true, phone: true, password: true, confirm: true });
+    setServerError('');
+    setTouched({ name: true, email: true, phone: true, password: true, confirm: true, agreed: true });
     if (!isValid) return;
 
     setLoading(true);
@@ -85,7 +87,13 @@ export default function RegisterScreen() {
 
       navigation.navigate('UserProfileSetup', { name, email, phone });
     } catch (err: any) {
-      Alert.alert('Dang ky that bai', err.message);
+      const message = err instanceof Error ? err.message : 'Không thể đăng ký. Vui lòng thử lại.';
+      if (message.toLowerCase().includes('email') && message.toLowerCase().includes('tồn tại')) {
+        setEmailServerError('Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.');
+        setTouched(previous => ({ ...previous, email: true }));
+      } else {
+        setServerError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -119,6 +127,13 @@ export default function RegisterScreen() {
 
         <View style={styles.card}>
 
+          {!!serverError && (
+            <View style={styles.errorBanner} accessibilityLiveRegion="assertive">
+              <Text style={styles.errorBannerTitle}>Không thể tạo tài khoản</Text>
+              <Text style={styles.errorBannerText}>{serverError}</Text>
+            </View>
+          )}
+
           {/* Ho ten */}
           <Text style={styles.label}>Ho va ten *</Text>
           <View style={[styles.inputWrap, touched.name && nameErr ? styles.inputError : null]}>
@@ -144,7 +159,11 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                setEmail(value.trim());
+                setEmailServerError('');
+                setServerError('');
+              }}
               onBlur={() => touch('email')}
             />
             {touched.email && !emailErr && <Text style={styles.ok}>ok</Text>}
@@ -160,7 +179,10 @@ export default function RegisterScreen() {
               placeholderTextColor="#b0bfb0"
               keyboardType="phone-pad"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(value) => {
+                setPhone(value);
+                setServerError('');
+              }}
               onBlur={() => touch('phone')}
             />
             {touched.phone && !phoneErr && <Text style={styles.ok}>ok</Text>}
@@ -236,10 +258,14 @@ export default function RegisterScreen() {
               Toi dong y voi <Text style={styles.agreeLink}>Dieu khoan dich vu</Text> va <Text style={styles.agreeLink}>Chinh sach bao mat</Text>
             </Text>
           </TouchableOpacity>
+          {touched.agreed && !agreed && (
+            <Text style={styles.errorText}>Bạn cần đồng ý với điều khoản để đăng ký.</Text>
+          )}
 
           <TouchableOpacity
             style={[styles.btn, (!isValid || loading) && styles.btnDisabled]}
             onPress={handleRegister}
+            disabled={loading}
             activeOpacity={0.85}
           >
             <Text style={styles.btnText}>{loading ? 'Dang tao tai khoan...' : 'Dang ky ngay'}</Text>
@@ -292,6 +318,9 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 13, color: '#388e3c', fontWeight: '600' },
   ok: { fontSize: 12, color: '#2e7d32', fontWeight: '800' },
   errorText: { fontSize: 11, color: '#e53935', marginTop: 5, marginLeft: 4 },
+  errorBanner: { backgroundColor: '#fff2f2', borderWidth: 1, borderColor: '#ef9a9a', borderRadius: 12, padding: 12, marginBottom: 8 },
+  errorBannerTitle: { color: '#b71c1c', fontSize: 13, fontWeight: '800', marginBottom: 3 },
+  errorBannerText: { color: '#c62828', fontSize: 12, lineHeight: 18 },
 
   strengthRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
   strengthSeg: { flex: 1, height: 4, borderRadius: 2 },
