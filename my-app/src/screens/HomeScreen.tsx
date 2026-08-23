@@ -27,13 +27,15 @@ import { useCartStore } from '@/store/cartStore';
 function HomeProductCard({ item, cardWidth, onAdd }: { item: any; cardWidth: any; onAdd: () => void }) {
   const navigation = useNavigation<any>();
   const scale = useRef(new Animated.Value(1)).current;
-  const animate = (toValue: number) => Animated.spring(scale, { toValue, friction: 7, tension: 90, useNativeDriver: true }).start();
+  const animate = (toValue: number) => Animated.spring(scale, { toValue, friction: 8, tension: 90, useNativeDriver: true }).start();
   const openDetail = () => navigation.navigate('ProductDetail', { product: item });
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
-      <TouchableOpacity activeOpacity={0.92} onPress={openDetail} onPressIn={() => animate(1.08)} onPressOut={() => animate(1)} style={styles.imageWrapper}>
-        <Animated.Image source={item.image} style={[styles.cardImage, { transform: [{ scale }] }]} resizeMode="cover" />
+      <TouchableOpacity activeOpacity={0.92} onPress={openDetail} onPressIn={() => animate(1.04)} onPressOut={() => animate(1)} style={styles.imageWrapper}>
+        <View style={styles.imageClip}>
+          <Animated.Image source={item.image} style={[styles.cardImage, { transform: [{ scale }] }]} resizeMode="cover" />
+        </View>
         {item.oldPrice && <View style={styles.saleBadge}><Text style={styles.saleBadgeText}>SALE</Text></View>}
         <View style={styles.imageDetailHint}><Text style={styles.imageDetailHintText}>Xem chi tiết</Text></View>
       </TouchableOpacity>
@@ -219,6 +221,7 @@ const styles = StyleSheet.create({
   },
 
   cardImage: { width: '100%', height: '100%' },
+  imageClip: { ...StyleSheet.absoluteFillObject, borderRadius: 8, overflow: 'hidden' },
   imageDetailHint: { position: 'absolute', left: 6, right: 6, bottom: 6, backgroundColor: 'rgba(27,94,32,0.78)', borderRadius: 7, paddingVertical: 4, alignItems: 'center' },
   imageDetailHintText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 

@@ -48,14 +48,16 @@ function ProductCard({ item, isAdded, onAdd, cardWidth }: {
   const price    = Number(item.salePrice ?? item.price ?? 0);
   const oldPrice = item.oldPrice ? Number(item.oldPrice) : null;
   const imageScale = useRef(new Animated.Value(1)).current;
-  const animateImage = (toValue: number) => Animated.spring(imageScale, { toValue, friction: 7, tension: 90, useNativeDriver: true }).start();
+  const animateImage = (toValue: number) => Animated.spring(imageScale, { toValue, friction: 8, tension: 90, useNativeDriver: true }).start();
   const openDetail = () => navigation.navigate("ProductDetail", { product: item });
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
-      <TouchableOpacity style={styles.imageWrapper} onPress={openDetail} onPressIn={() => animateImage(1.08)} onPressOut={() => animateImage(1)} activeOpacity={0.92}>
+      <TouchableOpacity style={styles.imageWrapper} onPress={openDetail} onPressIn={() => animateImage(1.04)} onPressOut={() => animateImage(1)} activeOpacity={0.92}>
         {src ? (
-          <Animated.Image source={src} style={[styles.cardImage, { transform: [{ scale: imageScale }] }]} resizeMode="cover" />
+          <View style={styles.imageClip}>
+            <Animated.Image source={src} style={[styles.cardImage, { transform: [{ scale: imageScale }] }]} resizeMode="cover" />
+          </View>
         ) : (
           <View style={styles.cardImgPlaceholder}>
             <Text style={{ fontSize: 28 }}>🥦</Text>
@@ -238,6 +240,7 @@ const styles = StyleSheet.create({
     marginBottom: 6, position: "relative",
   },
   cardImage:          { width: "100%", height: "100%" },
+  imageClip: { ...StyleSheet.absoluteFillObject, borderRadius: 8, overflow: "hidden" },
   imageDetailHint: { position: "absolute", left: 6, right: 6, bottom: 6, backgroundColor: "rgba(27,94,32,0.78)", borderRadius: 7, paddingVertical: 4, alignItems: "center" },
   imageDetailHintText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   cardImgPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
