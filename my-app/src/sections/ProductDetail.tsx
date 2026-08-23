@@ -345,7 +345,7 @@ export default function ProductDetailScreen() {
                   <RelatedCard
                     key={item.id}
                     item={item}
-                    isAdded={addedRelId === item.id}
+                    isAdded={String(addedRelId) === String(item.id)}
                     onAdd={() => handleRelatedAdd(item)}
                     onPress={() => navigation.push("ProductDetail", { product: item })}
                   />

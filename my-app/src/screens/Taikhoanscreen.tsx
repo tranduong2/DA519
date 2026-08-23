@@ -125,8 +125,8 @@ export default function TaiKhoanScreen() {
       toast.show('Vui lòng điền đầy đủ thông tin', 'error');
       return;
     }
-    if (newPw.length < 6) {
-      toast.show('Mật khẩu mới phải có ít nhất 6 ký tự', 'error');
+    if (newPw.length < 8) {
+      toast.show('Mật khẩu mới phải có ít nhất 8 ký tự', 'error');
       return;
     }
     if (newPw !== confirmPw) {
@@ -295,7 +295,7 @@ export default function TaiKhoanScreen() {
                   style={[styles.input, { flex: 1 }]}
                   value={newPw}
                   onChangeText={setNewPw}
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder="Tối thiểu 8 ký tự"
                   placeholderTextColor="#bbb"
                   secureTextEntry={!showNew}
                 />

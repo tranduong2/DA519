@@ -9,8 +9,6 @@ export const getOrders = async (token: string): Promise<Order[]> => {
     }
 
     console.log('🔍 Fetching orders from:', `${BASE_URL}/orders`);
-    console.log('🔑 Token:', token?.substring(0, 20) + '...');
-
     const res = await fetch(`${BASE_URL}/orders`, {
       method: 'GET',
       headers: {

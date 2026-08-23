@@ -124,14 +124,6 @@ export default function CheckoutScreen() {
 
   // ── Tạo đơn hàng ── dùng token từ store, không phải user.token ──
   const createOrder = async (): Promise<string | null> => {
-    
-  const { token: storeToken, user: storeUser } = useUserStore.getState();
-  console.log("=== DEBUG TOKEN ===");
-  console.log("storeToken:", storeToken);
-  console.log("storeUser.token:", storeUser?.token);
-  console.log("storeUser.email:", storeUser?.email);
-  console.log("==================");
-
     const orderCode = "DH" + Date.now().toString().slice(-6);
 
     const payload = {

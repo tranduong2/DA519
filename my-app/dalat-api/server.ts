@@ -7,8 +7,66 @@ import { PostgresCompatPool, ResultSetHeader } from './postgresCompat';
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+
+const configuredOrigin = process.env.FRONTEND_URL
+  ? new URL(process.env.FRONTEND_URL).origin
+  : 'https://tranduong2.github.io';
+const allowedOrigins = new Set([
+  configuredOrigin,
+  'https://tranduong2.github.io',
+  'http://localhost:19006',
+  'http://localhost:8081',
+  'http://localhost:3000',
+]);
+app.use(cors({
+  origin(origin, callback) {
+    // Native apps and same-origin/server requests do not send an Origin header.
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error('Origin không được phép'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use((error: Error, _req: Request, res: Response, next: NextFunction) => {
+  if (error?.message === 'Origin không được phép') {
+    return res.status(403).json({ message: 'Origin không được phép' });
+  }
+  next(error);
+});
+app.use(express.json({ limit: '1mb' }));
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  next();
+});
+
+type RateEntry = { count: number; resetAt: number };
+function rateLimit(windowMs: number, max: number) {
+  const entries = new Map<string, RateEntry>();
+  return (req: Request, res: Response, next: NextFunction) => {
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const current = entries.get(key);
+    if (!current || current.resetAt <= now) {
+      entries.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    current.count += 1;
+    if (current.count > max) {
+      res.setHeader('Retry-After', String(Math.ceil((current.resetAt - now) / 1000)));
+      return res.status(429).json({ message: 'Quá nhiều lần thử. Vui lòng chờ rồi thử lại.' });
+    }
+    next();
+  };
+}
+
+app.use('/auth/login', rateLimit(15 * 60 * 1000, 10));
+app.use('/auth/register', rateLimit(60 * 60 * 1000, 10));
+const createOrderRateLimit = rateLimit(60 * 60 * 1000, 30);
 
 // Log all incoming requests
 app.use((req, res, next) => {
@@ -40,6 +98,51 @@ const tokenToUserId: Record<string, number> = {};
 
 function createToken(): string {
   return crypto.randomUUID();
+}
+
+function cleanText(value: unknown, maxLength: number): string {
+  return String(value ?? '').trim().replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
+}
+
+function normalizeEmail(value: unknown): string {
+  return cleanText(value, 254).toLowerCase();
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function hashPassword(password: string): Promise<string> {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
+      if (error) return reject(error);
+      resolve(`scrypt$${salt}$${derivedKey.toString('hex')}`);
+    });
+  });
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (!stored.startsWith('scrypt$')) return stored === password;
+  const [, salt, expectedHex] = stored.split('$');
+  if (!salt || !expectedHex) return false;
+  return new Promise((resolve) => {
+    crypto.scrypt(password, salt, 64, (error, derivedKey) => {
+      if (error) return resolve(false);
+      const expected = Buffer.from(expectedHex, 'hex');
+      resolve(expected.length === derivedKey.length && crypto.timingSafeEqual(expected, derivedKey));
+    });
+  });
+}
+
+async function migrateLegacyPasswords(): Promise<void> {
+  const [rows] = await pool.query('SELECT id, password FROM users') as [any[], any];
+  for (const row of rows as any[]) {
+    const password = String(row.password ?? '');
+    if (password && !password.startsWith('scrypt$')) {
+      await pool.query('UPDATE users SET password = ? WHERE id = ?', [await hashPassword(password), row.id]);
+    }
+  }
 }
 
 function mapUser(row: any, token: string) {
@@ -240,7 +343,7 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
   }
 
   if (!userId) {
-    console.error('❌ authMiddleware: Token not found:', token.substring(0, 20) + '...');
+    console.error('❌ authMiddleware: invalid or expired token');
     return res.status(401).json({ message: 'Token không hợp lệ hoặc hết hạn' });
   }
 
@@ -310,6 +413,7 @@ async function startServer() {
     console.log("✅ Kết nối Supabase PostgreSQL thành công!");
 
     await ensureUserColumns();
+    await migrateLegacyPasswords();
     await ensureInventoryTables();
     await ensureOrderColumns();
 
@@ -342,7 +446,8 @@ async function startServer() {
 
     app.post("/auth/login", async (req, res) => {
       try {
-        const { email, password } = req.body;
+        const email = normalizeEmail(req.body?.email);
+        const password = String(req.body?.password ?? '');
 
         if (!email || !password) {
           return res.status(400).json({ message: "Vui lòng nhập đầy đủ email và mật khẩu" });
@@ -350,7 +455,7 @@ async function startServer() {
 
         const [rows] = await pool.query(
           "SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
-          [String(email).trim()],
+          [email],
         ) as [any[], any];
 
         if (!Array.isArray(rows) || rows.length === 0) {
@@ -359,8 +464,13 @@ async function startServer() {
         if (rows[0].banned) {
           return res.status(403).json({ message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên" });
         }
-        if (rows[0].password !== password) {
+        if (!(await verifyPassword(password, String(rows[0].password ?? '')))) {
           return res.status(401).json({ message: "Mật khẩu không chính xác" });
+        }
+
+        // Nâng cấp trong suốt tài khoản cũ từ mật khẩu chữ thường sang scrypt.
+        if (!String(rows[0].password ?? '').startsWith('scrypt$')) {
+          await pool.query('UPDATE users SET password = ? WHERE id = ?', [await hashPassword(password), rows[0].id]);
         }
 
         const token = createToken();
@@ -387,7 +497,14 @@ async function startServer() {
 
     app.post("/auth/register", async (req, res) => {
       try {
-        const { name, email, phone, password } = req.body;
+        const name = cleanText(req.body?.name, 100);
+        const email = normalizeEmail(req.body?.email);
+        const phone = cleanText(req.body?.phone, 20);
+        const password = String(req.body?.password ?? '');
+
+        if (!name || !isValidEmail(email) || password.length < 8 || password.length > 128) {
+          return res.status(400).json({ message: 'Tên, email hợp lệ và mật khẩu từ 8 ký tự là bắt buộc' });
+        }
 
         const [exist] = await pool.query(
           "SELECT id FROM users WHERE email = ?",
@@ -400,7 +517,7 @@ async function startServer() {
 
         await pool.query(
           "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
-          [name, email, phone ?? "", password, "user"],
+          [name, email, phone, await hashPassword(password), "user"],
         );
 
         const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [
@@ -444,11 +561,13 @@ async function startServer() {
     // ✅ FIX: dùng req.userId thay vì email trong body, trả về user sau khi cập nhật
     app.put("/auth/update-profile", authMiddleware, async (req: AuthRequest, res) => {
       try {
-        const { username, address, phone } = req.body;
+        const username = cleanText(req.body?.username, 100);
+        const address = cleanText(req.body?.address, 500);
+        const phone = cleanText(req.body?.phone, 20);
 
         await pool.query(
           `UPDATE users SET username = ?, address = ?, phone = ? WHERE id = ?`,
-          [username ?? null, address ?? null, phone ?? null, req.userId],
+          [username || null, address || null, phone || null, req.userId],
         );
 
         const [rows] = await pool.query(
@@ -470,18 +589,18 @@ async function startServer() {
         if (!currentPassword || !newPassword) {
           return res.status(400).json({ message: "Thiếu thông tin mật khẩu" });
         }
-        if (newPassword.length < 6) {
-          return res.status(400).json({ message: "Mật khẩu mới phải có ít nhất 6 ký tự" });
+        if (newPassword.length < 8 || newPassword.length > 128) {
+          return res.status(400).json({ message: "Mật khẩu mới phải có từ 8 đến 128 ký tự" });
         }
         const [rows] = await pool.query(
           "SELECT password FROM users WHERE id = ?", [req.userId],
         ) as [any[], any];
         const user = (rows as any[])[0];
         if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
-        if (user.password !== currentPassword) {
+        if (!(await verifyPassword(String(currentPassword), String(user.password ?? '')))) {
           return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
         }
-        await pool.query("UPDATE users SET password = ? WHERE id = ?", [newPassword, req.userId]);
+        await pool.query("UPDATE users SET password = ? WHERE id = ?", [await hashPassword(String(newPassword)), req.userId]);
         res.json({ message: "Đổi mật khẩu thành công" });
       } catch (err) {
         console.error(err);
@@ -490,9 +609,14 @@ async function startServer() {
     });
 
     // ✅ GET USER
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", authMiddleware, async (req: AuthRequest, res) => {
       try {
-        const { email } = req.params;
+        const email = normalizeEmail(req.params.email);
+        const [requesterRows] = await pool.query('SELECT email, role FROM users WHERE id = ?', [req.userId]) as [any[], any];
+        const requester = (requesterRows as any[])[0];
+        if (!requester || (requester.role !== 'admin' && normalizeEmail(requester.email) !== email)) {
+          return res.status(403).json({ message: 'Không có quyền xem tài khoản này' });
+        }
 
         const [rows] = await pool.query(
           "SELECT id, email, name, username, phone, address, role, banned, vipTier, quarterlySpending, rewardPoints, vipQuarterKey, vipTierUpdatedAt FROM users WHERE email = ?",
@@ -575,7 +699,7 @@ async function startServer() {
       res.json(typedRows[0]);
     });
 
-    app.post("/products", async (req, res) => {
+    app.post("/products", authMiddleware, adminMiddleware, async (req, res) => {
       const { name, price, oldPrice, cat, imageUrl } = req.body;
       const [result] = await pool.query(
         "INSERT INTO Products (name, price, oldPrice, cat, imageUrl) VALUES (?, ?, ?, ?, ?)",
@@ -589,7 +713,7 @@ async function startServer() {
     });
 
     // ✅ THÊM: quản lý sản phẩm flash sale (còn thiếu trong bản TS gốc)
-    app.post('/products/flashsale', async (req, res) => {
+    app.post('/products/flashsale', authMiddleware, adminMiddleware, async (req, res) => {
       try {
         const { name, price, oldPrice, salePrice, cat, imageUrl } = req.body;
         if (!name) return res.status(400).json({ message: 'Tên sản phẩm là bắt buộc' });
@@ -604,7 +728,7 @@ async function startServer() {
       }
     });
 
-    app.put('/products/flashsale/:id', async (req, res) => {
+    app.put('/products/flashsale/:id', authMiddleware, adminMiddleware, async (req, res) => {
       try {
         const { id } = req.params;
         const { name, price, oldPrice, salePrice, cat, imageUrl } = req.body;
@@ -620,7 +744,7 @@ async function startServer() {
       }
     });
 
-    app.delete('/products/flashsale/:id', async (req, res) => {
+    app.delete('/products/flashsale/:id', authMiddleware, adminMiddleware, async (req, res) => {
       try {
         await pool.query('DELETE FROM Products WHERE id = ? AND isFlashSale = 1', [req.params.id]);
         res.json({ message: 'Đã xóa sản phẩm flash sale' });
@@ -667,14 +791,13 @@ async function startServer() {
     });
 
     // ✅ SỬA: optionalAuthMiddleware — khách vãng lai cũng xem được đơn hàng của họ qua orderId
-    app.get("/orders/:orderId", optionalAuthMiddleware, async (req: AuthRequest, res) => {
+    app.get("/orders/:orderId", authMiddleware, async (req: AuthRequest, res) => {
       try {
         const { orderId } = req.params;
 
-        // Cho xem nếu: đơn của chính user đã đăng nhập, HOẶC đơn của khách vãng lai (userId NULL)
         const [orders] = await pool.query(
-          "SELECT * FROM orders WHERE id = ? AND (userId = ? OR userId IS NULL)",
-          [orderId, req.userId ?? null],
+          "SELECT * FROM orders WHERE id = ? AND userId = ?",
+          [orderId, req.userId],
         ) as [any[], any];
 
         if (!Array.isArray(orders) || orders.length === 0) {
@@ -694,7 +817,7 @@ async function startServer() {
     });
 
     // ✅ SỬA: optionalAuthMiddleware — cho phép đặt hàng không cần đăng nhập (guest checkout)
-    app.post("/orders", optionalAuthMiddleware, async (req: AuthRequest, res) => {
+    app.post("/orders", createOrderRateLimit, optionalAuthMiddleware, async (req: AuthRequest, res) => {
       try {
         const {
           orderCode,
@@ -705,8 +828,21 @@ async function startServer() {
           estimatedDelivery,
         } = req.body;
 
-        if (!items || items.length === 0) {
+        if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
           return res.status(400).json({ message: "Đơn hàng phải có sản phẩm" });
+        }
+
+        const safeOrderCode = cleanText(orderCode, 50);
+        const safeAddress = cleanText(shippingAddress, 500);
+        if (!safeOrderCode || !safeAddress) {
+          return res.status(400).json({ message: 'Thiếu mã đơn hoặc địa chỉ giao hàng' });
+        }
+        for (const item of items) {
+          const quantity = Number(item?.quantity);
+          const price = Number(item?.price);
+          if (!item?.productId || !cleanText(item?.productName, 255) || !Number.isFinite(quantity) || quantity <= 0 || quantity > 10000 || !Number.isFinite(price) || price < 0) {
+            return res.status(400).json({ message: 'Dữ liệu sản phẩm không hợp lệ' });
+          }
         }
 
         const orderValue = Number(totalAmount || 0);
@@ -723,12 +859,12 @@ async function startServer() {
            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
           [
             req.userId ?? null, // ← khách vãng lai: không có userId
-            orderCode,
+            safeOrderCode,
             orderValue,
             "pending",
             normalizedPaymentMethod,
-            shippingAddress,
-            estimatedDelivery || null,
+            safeAddress,
+            cleanText(estimatedDelivery, 100) || null,
           ],
         ) as [any, any];
 
@@ -742,10 +878,10 @@ async function startServer() {
             [
               orderId,
               item.productId,
-              item.productName,
+              cleanText(item.productName, 255),
               item.price,
               item.quantity,
-              item.note || null,
+              cleanText(item.note, 500) || null,
             ],
           );
         }
@@ -789,6 +925,10 @@ async function startServer() {
       try {
         const { orderId } = req.params;
         const { status, estimatedDelivery } = req.body;
+
+        if (status !== undefined) {
+          return res.status(403).json({ message: 'Khách hàng không thể tự thay đổi trạng thái đơn' });
+        }
 
         const validStatuses = [
           "pending",
@@ -898,14 +1038,20 @@ async function startServer() {
       try {
         const { orderCode, orderDate, items, totalPrice } = req.body;
 
-        if (!items || items.length === 0) {
+        if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
           return res.status(400).json({ message: "Đơn hàng phải có sản phẩm" });
+        }
+        for (const item of items) {
+          const kg = Number(item?.kg);
+          if (!cleanText(item?.productName, 255) || !Number.isFinite(kg) || kg <= 0 || kg > 100000) {
+            return res.status(400).json({ message: 'Tên món hoặc số lượng đơn sỉ không hợp lệ' });
+          }
         }
 
         const [result] = await pool.query(
           `INSERT INTO bulk_orders (userId, orderCode, orderDate, totalPrice, status, createdAt)
            VALUES (?, ?, ?, ?, 'pending', NOW())`,
-          [req.userId, orderCode, orderDate, totalPrice],
+          [req.userId, cleanText(orderCode, 50), cleanText(orderDate, 50), Math.max(0, Number(totalPrice) || 0)],
         ) as [any, any];
 
         const resultTyped = result as any;
@@ -917,12 +1063,12 @@ async function startServer() {
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               bulkOrderId,
-              item.productId,
-              item.productName,
+              cleanText(item.productId, 50) || null,
+              cleanText(item.productName, 255),
               item.kg,
               item.pricePerKg,
               item.subtotal,
-              item.note || null,
+              cleanText(item.note, 500) || null,
             ],
           );
         }
@@ -1249,10 +1395,12 @@ async function startServer() {
     app.post('/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
       try {
         const { name, email, phone, role, banned, password } = req.body;
-        if (!email) return res.status(400).json({ message: 'Email là bắt buộc' });
-        const pwd = password ?? '';
-        await pool.query('INSERT INTO users (name, email, phone, password, role, banned) VALUES (?, ?, ?, ?, ?, ?)', [name ?? null, email, phone ?? null, pwd, role ?? 'user', banned ? 1 : 0]);
-        const [rows] = await pool.query('SELECT id, email, name, username, phone, role, banned FROM users WHERE email = ?', [email]) as [any[], any];
+        const safeEmail = normalizeEmail(email);
+        const safeRole = role === 'admin' ? 'admin' : 'user';
+        if (!isValidEmail(safeEmail) || String(password ?? '').length < 8) return res.status(400).json({ message: 'Email hợp lệ và mật khẩu từ 8 ký tự là bắt buộc' });
+        const pwd = await hashPassword(String(password));
+        await pool.query('INSERT INTO users (name, email, phone, password, role, banned) VALUES (?, ?, ?, ?, ?, ?)', [cleanText(name, 100) || null, safeEmail, cleanText(phone, 20) || null, pwd, safeRole, banned ? 1 : 0]);
+        const [rows] = await pool.query('SELECT id, email, name, username, phone, role, banned FROM users WHERE email = ?', [safeEmail]) as [any[], any];
         res.status(201).json({ user: { ...(rows as any[])[0], banned: !!(rows as any[])[0].banned } });
       } catch (err) {
         console.error(err);
@@ -1268,7 +1416,6 @@ async function startServer() {
         const [targetRows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [id as string]) as [any[], any];
         const target = (targetRows as any[])[0];
         if (!target) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-
         if (target.role === 'admin' && Number(id) !== Number(req.userId) && role && role !== 'admin') {
           return res.status(403).json({ message: 'Không được thay đổi role của admin khác' });
         }
@@ -1301,6 +1448,9 @@ async function startServer() {
         const [targetRows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [id as string]) as [any[], any];
         const target = (targetRows as any[])[0];
         if (!target) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        if (Number(id) === Number(req.userId)) {
+          return res.status(403).json({ message: 'Không thể tự xóa tài khoản admin đang đăng nhập' });
+        }
         if (target.role === 'admin' && Number(id) !== Number(req.userId)) {
           return res.status(403).json({ message: 'Không được xóa admin khác' });
         }
@@ -1319,10 +1469,19 @@ async function startServer() {
         const [targetRows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [id as string]) as [any[], any];
         const target = (targetRows as any[])[0];
         if (!target) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        if (Number(id) === Number(req.userId) && banned) {
+          return res.status(403).json({ message: 'Không thể tự khóa tài khoản admin đang đăng nhập' });
+        }
         if (target.role === 'admin' && Number(id) !== Number(req.userId)) {
           return res.status(403).json({ message: 'Không được cấm admin khác' });
         }
         await pool.query('UPDATE users SET banned = ? WHERE id = ?', [banned ? 1 : 0, id as string]);
+        if (banned) {
+          await pool.query('UPDATE users SET session_token = NULL WHERE id = ?', [id as string]);
+          for (const [token, userId] of Object.entries(tokenToUserId)) {
+            if (Number(userId) === Number(id)) delete tokenToUserId[token];
+          }
+        }
         res.json({ message: banned ? 'Đã cấm người dùng' : 'Đã bỏ cấm người dùng' });
       } catch (err) {
         console.error(err);
@@ -1494,13 +1653,26 @@ async function startServer() {
       }
     });
 
-    // ✅ SỬA: optionalAuthMiddleware — khách vãng lai vẫn ghi nhận được lượt dùng mã khuyến mãi
-    app.post('/promotions/use', optionalAuthMiddleware, async (req, res) => {
+    // Chỉ người dùng đã đăng nhập mới được ghi nhận lượt sử dụng mã.
+    app.post('/promotions/use', authMiddleware, async (req, res) => {
       try {
-        const { code } = req.body;
-        const [rows] = await pool.query('SELECT * FROM promotions WHERE code = ?', [code]) as [any[], any];
+        const code = cleanText(req.body?.code, 50).toUpperCase();
+        if (!code) return res.status(400).json({ message: 'Thiếu mã khuyến mãi' });
+        const [rows] = await pool.query(
+          `SELECT * FROM promotions WHERE code = ? AND isActive = 1 AND startDate <= CURDATE() AND endDate >= CURDATE()`,
+          [code],
+        ) as [any[], any];
         if (!(rows as any[]).length) return res.status(404).json({ message: 'Mã không tồn tại' });
-        await pool.query('UPDATE promotions SET usedCount = usedCount + 1 WHERE code = ?', [code]);
+        const promo = (rows as any[])[0];
+        if (Number(promo.maxUsage) > 0 && Number(promo.usedCount) >= Number(promo.maxUsage)) {
+          return res.status(400).json({ message: 'Mã đã hết lượt sử dụng' });
+        }
+        const [result] = await pool.query(
+          `UPDATE promotions SET usedCount = usedCount + 1
+           WHERE code = ? AND isActive = 1 AND (maxUsage = 0 OR usedCount < maxUsage)`,
+          [code],
+        ) as [ResultSetHeader, any];
+        if (!result.affectedRows) return res.status(409).json({ message: 'Mã vừa hết lượt sử dụng' });
         res.json({ message: 'Đã ghi nhận sử dụng mã' });
       } catch (err) {
         res.status(500).json({ message: 'Lỗi server' });

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, RefreshControl,
 } from 'react-native';
 import { BASE_URL } from '@/services/api';
+import { useUserStore } from '@/store/userStore';
 
 interface Product {
   id: number;
@@ -209,6 +210,7 @@ function Field({
 
 // ── Main Screen ────────────────────────────────────────────────
 export default function FlashSaleAdmin() {
+  const token = useUserStore(state => state.token);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -257,7 +259,7 @@ export default function FlashSaleAdmin() {
         // Edit
         const res = await fetch(`${BASE_URL}/products/flashsale/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error();
@@ -266,7 +268,7 @@ export default function FlashSaleAdmin() {
         // Create
         const res = await fetch(`${BASE_URL}/products/flashsale`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error();
@@ -283,7 +285,7 @@ export default function FlashSaleAdmin() {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/products/flashsale/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE_URL}/products/flashsale/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error();
       setProducts(prev => prev.filter(p => p.id !== id));
     } catch {
