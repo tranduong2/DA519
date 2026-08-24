@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, TextInput, Alert, ActivityIndicator,
-  useWindowDimensions,
+  useWindowDimensions, Modal, ScrollView,
 } from 'react-native';
-import { getProducts } from '../services/api';
+import { BASE_URL, getProducts } from '../services/api';
 import { useCartStore } from '@/store/cartStore';
 import { useUserStore } from '@/store/userStore'; // ✅ thêm
 import { useNavigation } from '@react-navigation/native';
@@ -47,12 +47,18 @@ export default function BulkOrderScreen() {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [productModal, setProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState({ name: '', cat: '', price: '' });
+  const [adminSaving, setAdminSaving] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    getProducts()
+  const loadProducts = () => {
+    setLoading(true);
+    return getProducts()
       .then(data => {
         const productList = Array.isArray(data) ? data : [];
-        const normalized = productList.slice(0, 30).map((p: any, index: number) => {
+        const normalized = productList.map((p: any, index: number) => {
           const parsedPrice = Number(p?.priceValue) || parseFloat(String(p?.price ?? '').replace(/[^\d]/g, ''));
 
           return {
@@ -71,7 +77,50 @@ export default function BulkOrderScreen() {
       })
       .catch(() => Alert.alert('Lỗi', 'Không tải được sản phẩm'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadProducts(); }, []);
+
+  const openCreateProduct = () => {
+    setEditingProduct(null);
+    setProductForm({ name: '', cat: '', price: '' });
+    setProductModal(true);
+  };
+  const openEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({ name: product.name, cat: product.cat, price: String(product.price) });
+    setProductModal(true);
+  };
+  const saveProduct = async () => {
+    const priceValue = Number(productForm.price.replace(/[^\d]/g, ''));
+    if (!productForm.name.trim()) return Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên sản phẩm.');
+    if (!Number.isFinite(priceValue) || priceValue < 0) return Alert.alert('Sai đơn giá', 'Đơn giá không hợp lệ.');
+    try {
+      setAdminSaving(true);
+      const response = await fetch(`${BASE_URL}/admin/products${editingProduct ? `/${editingProduct.id}` : ''}`, {
+        method: editingProduct ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+        body: JSON.stringify({ name: productForm.name.trim(), cat: productForm.cat.trim(), priceValue, price: `${priceValue.toLocaleString('vi-VN')}đ`, oldPrice: '', imageUrl: '', isFlashSale: false, salePrice: '' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'Không thể lưu sản phẩm.');
+      setProductModal(false);
+      await loadProducts();
+    } catch (reason: any) { Alert.alert('Lỗi', reason?.message || 'Không thể lưu sản phẩm.'); }
+    finally { setAdminSaving(false); }
+  };
+  const deleteProduct = (product: Product) => Alert.alert('Xóa sản phẩm', `Bạn có chắc muốn xóa "${product.name}"?`, [
+    { text: 'Hủy', style: 'cancel' },
+    { text: 'Xóa', style: 'destructive', onPress: async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/admin/products/${product.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${user?.token}` } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Không thể xóa sản phẩm.');
+        setSelected(current => { const next = { ...current }; delete next[product.id]; return next; });
+        await loadProducts();
+      } catch (reason: any) { Alert.alert('Lỗi', reason?.message || 'Không thể xóa sản phẩm.'); }
+    } },
+  ]);
 
   const toggle = (product: Product) => {
     setSelected(prev => {
@@ -229,6 +278,13 @@ export default function BulkOrderScreen() {
           )}
         </View>
 
+        {isAdmin && (
+          <View style={styles.adminRowActions}>
+            <TouchableOpacity style={styles.editProductBtn} onPress={() => openEditProduct(item)}><Text style={styles.editProductText}>Sửa</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.deleteProductBtn} onPress={() => deleteProduct(item)}><Text style={styles.deleteProductText}>Xóa</Text></TouchableOpacity>
+          </View>
+        )}
+
         {/* Kg controls */}
         <View style={styles.kgCol}>
           <View style={styles.kgWrap}>
@@ -285,9 +341,21 @@ export default function BulkOrderScreen() {
     <View style={styles.container}>
 
       <View style={styles.header}>
-        <Text style={styles.title}>🛒 Đặt hàng số lượng lớn</Text>
-        <Text style={styles.subtitle}>Tích chọn · Nhập kg · Ghi chú từng sản phẩm</Text>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}><Text style={styles.title}>🛒 Đặt hàng số lượng lớn</Text><Text style={styles.subtitle}>Tích chọn · Nhập kg · Ghi chú từng sản phẩm</Text></View>
+          {isAdmin && <TouchableOpacity style={styles.addProductAdminBtn} onPress={openCreateProduct}><Text style={styles.addProductAdminText}>+ Thêm sản phẩm</Text></TouchableOpacity>}
+        </View>
       </View>
+
+      <Modal visible={productModal} transparent animationType="fade" onRequestClose={() => setProductModal(false)}>
+        <View style={styles.modalOverlay}><View style={styles.productModalCard}><ScrollView keyboardShouldPersistTaps="handled">
+          <Text style={styles.modalTitle}>{editingProduct ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}</Text>
+          <Text style={styles.fieldLabel}>Tên sản phẩm *</Text><TextInput style={styles.adminInput} value={productForm.name} onChangeText={name => setProductForm(current => ({ ...current, name }))} placeholder="VD: Rau cải xanh" />
+          <Text style={styles.fieldLabel}>Danh mục</Text><TextInput style={styles.adminInput} value={productForm.cat} onChangeText={cat => setProductForm(current => ({ ...current, cat }))} placeholder="VD: leaf, root, fruit" />
+          <Text style={styles.fieldLabel}>Đơn giá/kg *</Text><TextInput style={styles.adminInput} value={productForm.price} onChangeText={price => setProductForm(current => ({ ...current, price: price.replace(/[^\d]/g, '') }))} keyboardType="numeric" placeholder="VD: 15000" />
+          <View style={styles.modalActions}><TouchableOpacity style={styles.cancelBtn} onPress={() => setProductModal(false)}><Text style={styles.cancelText}>Hủy</Text></TouchableOpacity><TouchableOpacity disabled={adminSaving} style={[styles.saveProductBtn, adminSaving && { opacity: .6 }]} onPress={saveProduct}><Text style={styles.saveProductText}>{adminSaving ? 'Đang lưu...' : 'Lưu sản phẩm'}</Text></TouchableOpacity></View>
+        </ScrollView></View></View>
+      </Modal>
 
       <View style={styles.searchBox}>
         <Text>🔍 </Text>
@@ -363,8 +431,11 @@ const styles = StyleSheet.create({
   center:    { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header:   { backgroundColor: '#2e7d32', padding: 16, paddingTop: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title:    { fontSize: 20, fontWeight: '900', color: '#fff' },
   subtitle: { fontSize: 12, color: '#a5d6a7', marginTop: 2 },
+  addProductAdminBtn: { backgroundColor: '#fff', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 10 },
+  addProductAdminText: { color: '#1b5e20', fontWeight: '900', fontSize: 12 },
 
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
@@ -407,6 +478,19 @@ const styles = StyleSheet.create({
   kgInputZero: { borderColor: '#e53935', color: '#e53935' },
   kgLabel:   { fontSize: 11, color: '#888' },
   subtotal:  { fontSize: 12, color: '#e65100', fontWeight: '700', marginTop: 2 },
+  adminRowActions: { flexDirection: 'row', gap: 6, alignSelf: 'center', marginRight: 12 },
+  editProductBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#81c784', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 7 },
+  editProductText: { color: '#1b5e20', fontWeight: '900', fontSize: 11 },
+  deleteProductBtn: { backgroundColor: '#ffebee', borderWidth: 1, borderColor: '#ef9a9a', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 7 },
+  deleteProductText: { color: '#c62828', fontWeight: '900', fontSize: 11 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,.5)', alignItems: 'center', justifyContent: 'center', padding: 15 },
+  productModalCard: { width: '100%', maxWidth: 500, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
+  modalTitle: { color: '#1b5e20', fontSize: 19, fontWeight: '900', marginBottom: 12 },
+  fieldLabel: { color: '#455a64', fontSize: 12, fontWeight: '800', marginTop: 10, marginBottom: 5 },
+  adminInput: { borderWidth: 1, borderColor: '#a5d6a7', borderRadius: 9, paddingHorizontal: 11, paddingVertical: 10, color: '#263238', outlineStyle: 'none' } as any,
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 20 },
+  cancelBtn: { backgroundColor: '#eceff1', borderRadius: 9, paddingHorizontal: 18, paddingVertical: 10 }, cancelText: { color: '#455a64', fontWeight: '800' },
+  saveProductBtn: { backgroundColor: '#2e7d32', borderRadius: 9, paddingHorizontal: 18, paddingVertical: 10 }, saveProductText: { color: '#fff', fontWeight: '900' },
 
   customSection: { margin: 12, marginTop: 18, padding: 14, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#a5d6a7' },
   customHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
