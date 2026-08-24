@@ -1036,22 +1036,28 @@ async function startServer() {
 
     app.post("/bulk-orders", authMiddleware, async (req: AuthRequest, res) => {
       try {
-        const { orderCode, orderDate, items, totalPrice } = req.body;
+        const { orderCode, orderDate, items } = req.body;
 
         if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
           return res.status(400).json({ message: "Đơn hàng phải có sản phẩm" });
         }
         for (const item of items) {
           const kg = Number(item?.kg);
-          if (!cleanText(item?.productName, 255) || !Number.isFinite(kg) || kg <= 0 || kg > 100000) {
-            return res.status(400).json({ message: 'Tên món hoặc số lượng đơn sỉ không hợp lệ' });
+          const pricePerKg = Number(item?.pricePerKg);
+          if (!cleanText(item?.productName, 255) || !Number.isFinite(kg) || kg <= 0 || kg > 100000
+            || !Number.isFinite(pricePerKg) || pricePerKg < 0) {
+            return res.status(400).json({ message: 'Tên món, số kg hoặc đơn giá không hợp lệ' });
           }
         }
+        const calculatedTotal = items.reduce(
+          (sum: number, item: any) => sum + Number(item.kg) * Number(item.pricePerKg),
+          0,
+        );
 
         const [result] = await pool.query(
           `INSERT INTO bulk_orders (userId, orderCode, orderDate, totalPrice, status, createdAt)
            VALUES (?, ?, ?, ?, 'pending', NOW())`,
-          [req.userId, cleanText(orderCode, 50), cleanText(orderDate, 50), Math.max(0, Number(totalPrice) || 0)],
+          [req.userId, cleanText(orderCode, 50), cleanText(orderDate, 50), calculatedTotal],
         ) as [any, any];
 
         const resultTyped = result as any;
@@ -1065,9 +1071,9 @@ async function startServer() {
               bulkOrderId,
               cleanText(item.productId, 50) || null,
               cleanText(item.productName, 255),
-              item.kg,
-              item.pricePerKg,
-              item.subtotal,
+              Number(item.kg),
+              Number(item.pricePerKg),
+              Number(item.kg) * Number(item.pricePerKg),
               cleanText(item.note, 500) || null,
             ],
           );

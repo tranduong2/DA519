@@ -203,6 +203,24 @@ export default function OrdersScreen() {
   };
   const visibleNormalOrders = normalOrders.filter(o => matchesDate(o.createdAt));
   const visibleBulkOrders = bulkOrders.filter(o => matchesDate(o.createdAt) || (o.userName || '').toLowerCase().includes(dateSearch.trim().toLowerCase()));
+  const storeSummaries = Object.values(bulkOrders.reduce<Record<string, {
+    key: string; name: string; email: string; invoiceCount: number; total: number;
+  }>>((groups, order) => {
+    const key = order.userEmail || order.userName || `store-${order.id}`;
+    if (!groups[key]) groups[key] = {
+      key,
+      name: order.userName || 'Chưa có tên cửa hàng',
+      email: order.userEmail || '',
+      invoiceCount: 0,
+      total: 0,
+    };
+    groups[key].invoiceCount += 1;
+    groups[key].total += Number(order.totalPrice) || 0;
+    return groups;
+  }, {})).filter(store => {
+    const query = dateSearch.trim().toLowerCase();
+    return !query || store.name.toLowerCase().includes(query) || store.email.toLowerCase().includes(query);
+  });
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
@@ -304,8 +322,13 @@ export default function OrdersScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.headerTitle}>🧾 Quản lý đơn hàng</Text>
-        <Text style={s.headerSub}>Xin chào, {user?.username ?? 'Admin'}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.headerTitle}>🧾 Quản lý đơn hàng</Text>
+          <Text style={s.headerSub}>Xin chào, {user?.username ?? 'Admin'}</Text>
+        </View>
+        <TouchableOpacity style={s.manageProductsBtn} onPress={() => navigation.navigate('ManageProducts')}>
+          <Text style={s.manageProductsText}>+ Quản lý SP sỉ</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -337,6 +360,21 @@ export default function OrdersScreen() {
         />
         {dateSearch ? <TouchableOpacity onPress={() => setDateSearch('')}><Text style={s.searchClear}>✕</Text></TouchableOpacity> : null}
       </View>
+
+      {orderTab === 'bulk' && storeSummaries.length > 0 && (
+        <View style={s.storeSummarySection}>
+          <Text style={s.storeSummaryTitle}>TỔNG HÓA ĐƠN THEO QUÁN</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.storeSummaryList}>
+            {storeSummaries.map(store => (
+              <View key={store.key} style={s.storeSummaryCard}>
+                <Text style={s.storeSummaryName} numberOfLines={1}>🏪 {store.name}</Text>
+                <Text style={s.storeSummaryMeta}>{store.invoiceCount} hóa đơn</Text>
+                <Text style={s.storeSummaryTotal}>{fmtPrice(store.total)}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Content */}
       {loading && !refreshing ? (
@@ -384,10 +422,12 @@ const s = StyleSheet.create({
 
   header: {
     backgroundColor: '#1b5e20', paddingHorizontal: 20,
-    paddingTop: 16, paddingBottom: 16,
+    paddingTop: 16, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10,
   },
   headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff' },
   headerSub:   { fontSize: 13, color: '#a5d6a7', marginTop: 2 },
+  manageProductsBtn: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9 },
+  manageProductsText: { color: '#1b5e20', fontSize: 12, fontWeight: '800' },
 
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
   tab:         { flex: 1, paddingVertical: 13, alignItems: 'center' },
@@ -398,6 +438,13 @@ const s = StyleSheet.create({
   searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, padding: 12, fontSize: 13, color: '#263238', outlineStyle: 'none' } as any,
   searchClear: { color: '#78909c', padding: 6 },
+  storeSummarySection: { backgroundColor: '#f4faf4', paddingTop: 12 },
+  storeSummaryTitle: { marginHorizontal: 14, marginBottom: 8, color: '#558b2f', fontSize: 11, fontWeight: '900', letterSpacing: 0.8 },
+  storeSummaryList: { paddingHorizontal: 12, gap: 10 },
+  storeSummaryCard: { width: 190, backgroundColor: '#fff', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#c8e6c9' },
+  storeSummaryName: { color: '#1b5e20', fontSize: 14, fontWeight: '900' },
+  storeSummaryMeta: { color: '#78909c', fontSize: 11, marginTop: 5 },
+  storeSummaryTotal: { color: '#e65100', fontSize: 17, fontWeight: '900', marginTop: 5 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   list:   { padding: 16, gap: 12, paddingBottom: 40 },

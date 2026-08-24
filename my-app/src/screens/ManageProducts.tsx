@@ -110,7 +110,8 @@ export default function ManageProducts() {
       { text: 'Xóa', style: 'destructive', onPress: async () => {
         try {
           setLoading(true);
-          await fetch(`${BASE_URL}/admin/products/${id}`, { method: 'DELETE', headers });
+          const res = await fetch(`${BASE_URL}/admin/products/${id}`, { method: 'DELETE', headers });
+          if (!res.ok) throw new Error('Xóa sản phẩm thất bại');
           fetchProducts();
         } catch (e: any) { Alert.alert('Lỗi', e.message); }
         finally { setLoading(false); }
@@ -141,7 +142,7 @@ export default function ManageProducts() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Quản lý Sản phẩm</Text>
+        <Text style={styles.title}>Quản lý sản phẩm đơn sỉ</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
           <Text style={styles.addBtnText}>+ Thêm</Text>
         </TouchableOpacity>

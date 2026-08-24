@@ -26,10 +26,11 @@ export default function InvoiceScreen() {
 
   const { checkedItems, orderCode, orderDate } = route.params;
 
-  // Giá được lưu ngầm cho bản in của admin; giao diện đặt sỉ không hiển thị tiền.
   const totalPrice = checkedItems.reduce(
     (sum, item) => sum + getPrice(item.product.price) * item.kg, 0
   );
+  const [calculatedTotal, setCalculatedTotal] = React.useState<number | null>(null);
+  const formatMoney = (value: number) => value.toLocaleString('vi-VN') + 'đ';
 
   // ─── Modal state ──────────────────────────────────────
   const [modal, setModal] = React.useState<{
@@ -67,18 +68,20 @@ export default function InvoiceScreen() {
       `📱 SĐT      : ${user?.phone ?? ''}`,
       '',
       '──────────────────────────────────',
-      ' STT  SẢN PHẨM             SỐ LƯỢNG',
+      ' STT  SẢN PHẨM        KG x ĐƠN GIÁ = THÀNH TIỀN',
       '──────────────────────────────────',
       ...checkedItems.map((s, i) => {
         const stt      = String(i + 1).padStart(3, ' ');
         const name     = s.product.name.slice(0, 18).padEnd(18, ' ');
         const kg       = String(s.kg).padStart(4, ' ');
         const noteLine = s.note ? `       📝 ${s.note}` : '';
-        return [`${stt}.  ${name} ${kg} kg`, noteLine]
+        const unitPrice = getPrice(s.product.price);
+        return [`${stt}.  ${name} ${kg} kg x ${formatMoney(unitPrice)} = ${formatMoney(unitPrice * s.kg)}`, noteLine]
           .filter(Boolean).join('\n');
       }),
       '──────────────────────────────────',
       `TỔNG SỐ MẶT HÀNG : ${checkedItems.length} loại`,
+      `TỔNG TIỀN         : ${formatMoney(totalPrice)}`,
       '──────────────────────────────────',
       '',
       '⚠️  Đơn hàng cần xác nhận từ Admin',
@@ -203,14 +206,17 @@ export default function InvoiceScreen() {
           <View style={styles.tableHead}>
             <Text style={[styles.thText, { flex: 0.3 }]}>STT</Text>
             <Text style={[styles.thText, { flex: 1 }]}>Sản phẩm</Text>
-            <Text style={[styles.thText, { width: 90, textAlign: 'center' }]}>SỐ LƯỢNG</Text>
+            <Text style={[styles.thText, { width: 112, textAlign: 'right' }]}>KG × ĐƠN GIÁ</Text>
           </View>
           {checkedItems.map((s, i) => (
             <View key={String(s.product.id)} style={[styles.tableRow, i % 2 === 0 && styles.tableRowEven]}>
               <View style={styles.tableRowTop}>
                 <Text style={styles.tdNo}>{i + 1}</Text>
                 <Text style={styles.tdName} numberOfLines={2}>{s.product.name}</Text>
-                <Text style={[styles.tdKg, { width: 90, textAlign: 'center', fontWeight: '900' }]}>{s.kg} kg</Text>
+                <View style={{ width: 112, alignItems: 'flex-end' }}>
+                  <Text style={styles.tdKg}>{s.kg} kg × {formatMoney(getPrice(s.product.price))}</Text>
+                  <Text style={styles.tdPrice}>{formatMoney(s.kg * getPrice(s.product.price))}</Text>
+                </View>
               </View>
               {s.note ? <Text style={styles.tdNote}>📝 {s.note}</Text> : null}
             </View>
@@ -228,6 +234,18 @@ export default function InvoiceScreen() {
               <Text style={styles.totalLabel}>Tổng kg</Text>
               <Text style={styles.totalVal}>{checkedItems.reduce((s, i) => s + i.kg, 0)} kg</Text>
             </View>
+            <TouchableOpacity style={styles.calculateBtn} onPress={() => setCalculatedTotal(totalPrice)}>
+              <Text style={styles.calculateBtnText}>🧮 Tính tổng tất cả tiền</Text>
+            </TouchableOpacity>
+            {calculatedTotal !== null && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.totalRow}>
+                  <Text style={styles.grandLabel}>TỔNG THANH TOÁN</Text>
+                  <Text style={styles.grandPrice}>{formatMoney(calculatedTotal)}</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -323,8 +341,8 @@ const styles = StyleSheet.create({
   tableRowTop:  { flexDirection: 'row', alignItems: 'flex-start' },
   tdNo:    { fontSize: 12, color: '#aaa', width: 24 },
   tdName:  { flex: 1, fontSize: 13, fontWeight: '700', color: '#1b5e20' },
-  tdKg:    { width: 50, fontSize: 13, color: '#555', textAlign: 'right' },
-  tdPrice: { width: 90, fontSize: 13, fontWeight: '700', color: '#e65100', textAlign: 'right' },
+  tdKg:    { fontSize: 11, color: '#555', textAlign: 'right' },
+  tdPrice: { fontSize: 13, fontWeight: '800', color: '#e65100', textAlign: 'right', marginTop: 3 },
   tdNote:  { fontSize: 11, color: '#888', fontStyle: 'italic', marginTop: 3, marginLeft: 24 },
 
   totalBox:   { backgroundColor: '#fff', borderRadius: 12, padding: 14, elevation: 1 },
@@ -334,6 +352,8 @@ const styles = StyleSheet.create({
   divider:    { height: 1, backgroundColor: '#e8f5e9', marginVertical: 8 },
   grandLabel: { fontSize: 16, fontWeight: '900', color: '#1b5e20' },
   grandPrice: { fontSize: 22, fontWeight: '900', color: '#e65100' },
+  calculateBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#66bb6a', borderRadius: 10, paddingVertical: 11, alignItems: 'center', marginTop: 10 },
+  calculateBtnText: { color: '#1b5e20', fontSize: 14, fontWeight: '800' },
 
   footNote:     { backgroundColor: '#fff3e0', borderRadius: 12, padding: 12, gap: 4 },
   footNoteText: { fontSize: 12, color: '#e65100', textAlign: 'center' },
