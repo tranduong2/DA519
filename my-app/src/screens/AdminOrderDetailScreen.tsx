@@ -37,6 +37,7 @@ export default function AdminOrderDetailScreen() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
+  const [bulkView, setBulkView] = useState<'packing' | 'pricing'>('packing');
 
   const loadOrder = useCallback(async () => {
     if (!token) {
@@ -111,34 +112,34 @@ export default function AdminOrderDetailScreen() {
     finally { setSaving(false); }
   };
 
-  const printOrder = async (includePrices: boolean) => {
+  const printOrder = async () => {
     const isNormalOrder = type === 'normal';
-    if (includePrices && !isNormalOrder && (order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0)) {
+    if (!isNormalOrder && (order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0)) {
       Alert.alert('Chưa thể in', 'Vui lòng nhập và lưu đơn giá cho tất cả sản phẩm.');
       return;
     }
     const rows = (order.items ?? []).map((item: any, index: number) => `
-      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td>${includePrices ? `<td>${money(isNormalOrder ? item.price : item.pricePerKg)}</td><td>${money(isNormalOrder ? Number(item.price) * Number(item.quantity) : Number(item.kg) * Number(item.pricePerKg))}</td>` : ''}</tr>
-      ${item.note ? `<tr class="note"><td></td><td colspan="${includePrices ? 4 : 2}">Ghi chú: ${escapeHtml(item.note)}</td></tr>` : ''}
+      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td><td>${money(isNormalOrder ? item.price : item.pricePerKg)}</td><td>${money(isNormalOrder ? Number(item.price) * Number(item.quantity) : Number(item.kg) * Number(item.pricePerKg))}</td></tr>
+      ${item.note ? `<tr class="note"><td></td><td colspan="4">Ghi chú: ${escapeHtml(item.note)}</td></tr>` : ''}
     `).join('');
-    const title = isNormalOrder ? `Đơn hàng ${order.orderCode}` : `${includePrices ? 'Hóa đơn sỉ' : 'Đơn hàng sỉ'} - ${order.userName || 'Cửa hàng'}`;
+    const title = isNormalOrder ? `Đơn hàng ${order.orderCode}` : `Hóa đơn sỉ - ${order.userName || 'Cửa hàng'}`;
 
     if (Platform.OS === 'web') {
       const printWindow = window.open('', '_blank', 'width=980,height=760');
       if (!printWindow) { Alert.alert('Không thể in', 'Vui lòng cho phép trình duyệt mở cửa sổ mới.'); return; }
       printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
         @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0}h1{color:#1b5e20;margin:0 0 6px;font-size:24px}.sub{color:#64748b;margin-bottom:20px}.info{border:1px solid #9ca3af;padding:12px;margin-bottom:16px;line-height:1.8}.status{font-weight:700;color:#1b5e20}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#2e7d32;color:#fff;text-align:left}th,td{border:1px solid #6b7280;padding:8px}th:first-child,td:first-child{width:45px;text-align:center}th:nth-child(3),td:nth-child(3){width:95px;text-align:center;font-weight:700}th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){width:120px;text-align:right}tr:nth-child(even){background:#f1f8e9}.note td{font-size:11px;font-style:italic;color:#6b7280;background:#fff}.total{margin-top:16px;text-align:right;font-size:18px;font-weight:800}.footer{margin-top:22px;color:#64748b;font-size:11px;text-align:center}@media print{button{display:none}}
-      </style></head><body><h1>🥦 FreshVeggies</h1><div class="sub">${escapeHtml(title)}</div><div class="info"><b>${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}:</b> ${escapeHtml(order.userName)}<br>${isNormalOrder ? `<b>Số điện thoại:</b> ${escapeHtml(order.userPhone)}<br><b>Địa chỉ:</b> ${escapeHtml(order.shippingAddress)}<br>` : ''}<b>Ngày đặt:</b> ${escapeHtml(new Date(order.createdAt).toLocaleString('vi-VN'))}<br><b>Trạng thái:</b> <span class="status">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span></div><table><thead><tr><th>STT</th><th>SẢN PHẨM</th><th>SỐ KG</th>${includePrices ? '<th>ĐƠN GIÁ/KG</th><th>THÀNH TIỀN</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>${includePrices ? `<div class="total">TỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}</div>` : ''}<div class="footer">Bản in từ hệ thống quản lý FreshVeggies</div><script>window.onload=()=>{window.print()}<\/script></body></html>`);
+      </style></head><body><h1>🥦 FreshVeggies</h1><div class="sub">${escapeHtml(title)}</div><div class="info"><b>${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}:</b> ${escapeHtml(order.userName)}<br>${isNormalOrder ? `<b>Số điện thoại:</b> ${escapeHtml(order.userPhone)}<br><b>Địa chỉ:</b> ${escapeHtml(order.shippingAddress)}<br>` : ''}<b>Ngày đặt:</b> ${escapeHtml(new Date(order.createdAt).toLocaleString('vi-VN'))}<br><b>Trạng thái:</b> <span class="status">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span></div><table><thead><tr><th>STT</th><th>SẢN PHẨM</th><th>SỐ KG</th><th>ĐƠN GIÁ/KG</th><th>THÀNH TIỀN</th></tr></thead><tbody>${rows}</tbody></table><div class="total">TỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}</div><div class="footer">Bản in từ hệ thống quản lý FreshVeggies</div><script>window.onload=()=>{window.print()}<\/script></body></html>`);
       printWindow.document.close();
       return;
     }
 
     const textRows = (order.items ?? []).map((item: any, i: number) => {
       const quantity = isNormalOrder ? item.quantity : `${item.kg} kg`;
-      const priceText = includePrices ? ` × ${money(isNormalOrder ? item.price : item.pricePerKg)} = ${money(isNormalOrder ? Number(item.quantity) * Number(item.price) : Number(item.kg) * Number(item.pricePerKg))}` : '';
+      const priceText = ` × ${money(isNormalOrder ? item.price : item.pricePerKg)} = ${money(isNormalOrder ? Number(item.quantity) * Number(item.price) : Number(item.kg) * Number(item.pricePerKg))}`;
       return `${i + 1}. ${item.productName} - ${quantity}${priceText}`;
     }).join('\n');
-    const totalText = includePrices ? `\n\nTỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}` : '';
+    const totalText = `\n\nTỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}`;
     await Share.share({ title, message: `${title}\n${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}: ${order.userName || ''}\nNgày: ${new Date(order.createdAt).toLocaleString('vi-VN')}\n\n${textRows}${totalText}` });
   };
 
@@ -169,12 +170,9 @@ export default function AdminOrderDetailScreen() {
           </Text>
         </View>
         {isNormal ? (
-          <TouchableOpacity style={[s.printBtn, isMobile && s.printBtnMobile]} onPress={() => printOrder(true)}><Text style={s.printBtnText}>🖨️ In đơn</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.printBtn, isMobile && s.printBtnMobile]} onPress={printOrder}><Text style={s.printBtnText}>🖨️ In đơn</Text></TouchableOpacity>
         ) : (
-          <View style={s.printActions}>
-            <TouchableOpacity style={[s.printBtn, isMobile && s.printBtnMobile]} onPress={() => printOrder(false)}><Text style={s.printBtnText}>🖨️ {isMobile ? 'Không giá' : 'In đơn không giá'}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.invoicePrintBtn, isMobile && s.printBtnMobile]} onPress={() => printOrder(true)}><Text style={s.invoicePrintText}>🧾y {isMobile ? 'Có giá' : 'In hóa đơn có giá'}</Text></TouchableOpacity>
-          </View>
+          <TouchableOpacity style={[s.invoicePrintBtn, isMobile && s.printBtnMobile]} onPress={printOrder}><Text style={s.invoicePrintText}>🧾y {isMobile ? 'In hóa đơn' : 'In hóa đơn có giá'}</Text></TouchableOpacity>
         )}
         <View style={[s.badge, isMobile && s.badgeMobile, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
       </View>
@@ -196,20 +194,25 @@ export default function AdminOrderDetailScreen() {
           </View>
         )}
 
+        {!isNormal ? <View style={s.viewTabs}>
+          <TouchableOpacity style={[s.viewTab, bulkView === 'packing' && s.viewTabActive]} onPress={() => setBulkView('packing')}><Text style={[s.viewTabText, bulkView === 'packing' && s.viewTabTextActive]}>📦 Bảng đóng hàng</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.viewTab, bulkView === 'pricing' && s.viewTabActive]} onPress={() => setBulkView('pricing')}><Text style={[s.viewTabText, bulkView === 'pricing' && s.viewTabTextActive]}>🧮 Tính giá & hóa đơn</Text></TouchableOpacity>
+        </View> : null}
+
         <View style={[s.itemsCard, isMobile && s.cardMobile]}>
-          <Text style={s.sectionTitle}>Sản phẩm đã đặt ({order.items?.length ?? 0})</Text>
-          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>KG × ĐƠN GIÁ</Text></View> : null}
+          <Text style={s.sectionTitle}>{!isNormal && bulkView === 'packing' ? 'Danh sách đóng hàng' : 'Sản phẩm đã đặt'} ({order.items?.length ?? 0})</Text>
+          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text>{bulkView === 'packing' ? <Text style={s.excelNote}>GHI CHÚ</Text> : null}</View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
             <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, isMobile && s.itemRowMobile]}>
               {!isNormal ? <Text style={s.excelNo}>{index + 1}</Text> : null}
               <View style={{ flex: 1 }}>
                 <Text style={isNormal ? s.itemName : s.bulkItemName}>{item.productName}</Text>
                 {isNormal ? <Text style={s.itemMeta}>Số lượng: {item.quantity}</Text> : null}
-                {item.note ? <Text style={s.note}>Ghi chú: {item.note}</Text> : null}
+                {isNormal && item.note ? <Text style={s.note}>Ghi chú: {item.note}</Text> : null}
               </View>
               {isNormal ? <Text style={s.itemPrice}>{money(Number(item.price) * Number(item.quantity))}</Text> : null}
               {!isNormal ? (
-                <View style={s.pricingBox}>
+                bulkView === 'pricing' ? <View style={s.pricingBox}>
                   <Text style={s.formulaKg}>{item.kg} kg ×</Text>
                   <TextInput
                     value={priceInputs[String(item.id)] ?? ''}
@@ -219,7 +222,7 @@ export default function AdminOrderDetailScreen() {
                     style={s.priceInput}
                   />
                   <Text style={s.lineSubtotal}>= {money(Number(item.kg) * Number(priceInputs[String(item.id)] || 0))}</Text>
-                </View>
+                </View> : <><Text style={s.packingKg}>{item.kg} kg</Text><Text style={s.packingNote}>{item.note || '—'}</Text></>
               ) : null}
             </View>
           ))}
@@ -232,13 +235,13 @@ export default function AdminOrderDetailScreen() {
           </View>
         ) : (
           <>
-          <View style={[s.summaryCard, isMobile && s.cardMobile]}>
+          {bulkView === 'pricing' ? <View style={[s.summaryCard, isMobile && s.cardMobile]}>
             <TouchableOpacity disabled={saving} style={[s.calculateBtn, saving && { opacity: 0.6 }]} onPress={saveBulkPricing}>
               <Text style={s.calculateBtnText}>{saving ? 'Đang lưu...' : '🧮 Lưu đơn giá & tính tổng'}</Text>
             </TouchableOpacity>
             <View style={s.totalRow}><Text style={s.totalLabel}>Tổng hóa đơn</Text><Text style={s.totalValue}>{money(order.totalPrice)}</Text></View>
             <Text style={s.printHint}>Nhập đủ đơn giá và lưu trước khi in hóa đơn.</Text>
-          </View>
+          </View> : null}
           <View style={[s.statusCard, isMobile && s.cardMobile]}>
             <Text style={s.sectionTitle}>Cập nhật trạng thái đơn sỉ</Text>
             {error ? <Text style={s.inlineError}>{error}</Text> : null}
@@ -285,10 +288,14 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '900', color: '#1b5e20', marginBottom: 12 },
   customerName: { fontSize: 15, fontWeight: '800', color: '#263238', marginBottom: 7 }, info: { fontSize: 13, color: '#546e7a', lineHeight: 22 },
   itemsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#edf4ed' },
+  viewTabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 13, padding: 5, gap: 5 },
+  viewTab: { flex: 1, borderRadius: 9, paddingVertical: 11, alignItems: 'center' }, viewTabActive: { backgroundColor: '#1b5e20' },
+  viewTabText: { color: '#607d8b', fontWeight: '800', fontSize: 13 }, viewTabTextActive: { color: '#fff' },
   excelHead: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2e7d32', paddingVertical: 10, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1b5e20' },
   excelNo: { width: 44, textAlign: 'center', fontWeight: '800', color: '#607d8b' },
   excelProduct: { flex: 1, color: '#fff', fontWeight: '900', fontSize: 11 },
   excelQty: { width: 110, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
+  excelNote: { width: 180, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
   bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderTopWidth: 0, borderColor: '#c8e6c9' },
   itemRowMobile: { alignItems: 'flex-start', gap: 7 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
@@ -299,6 +306,8 @@ const s = StyleSheet.create({
   formulaKg: { color: '#1b5e20', fontSize: 13, fontWeight: '900' },
   priceInput: { width: 105, borderWidth: 1, borderColor: '#81c784', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 7, textAlign: 'right', color: '#263238', outlineStyle: 'none' } as any,
   lineSubtotal: { width: '100%', textAlign: 'right', color: '#e65100', fontSize: 13, fontWeight: '900' },
+  packingKg: { width: 110, textAlign: 'center', color: '#1b5e20', fontSize: 18, fontWeight: '900' },
+  packingNote: { width: 180, color: '#6d4c41', fontSize: 12, paddingHorizontal: 8 },
   calculateBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginBottom: 13 },
   calculateBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
   printHint: { color: '#78909c', fontSize: 11, textAlign: 'right', marginTop: 8 },
