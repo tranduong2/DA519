@@ -50,6 +50,8 @@ export default function Header() {
       case 'orders':           navigationRef.navigate('OrderList');         break;
       case 'bulkOrders':       navigationRef.navigate('BulkOrderTracking'); break;
       case 'admin':            navigationRef.navigate('Admin');             break;
+      case 'adminBulk':        navigationRef.navigate('Admin', { initialTab: 'bulk' }); break;
+      case 'invoiceTotals':    navigationRef.navigate('StoreInvoiceTotals'); break;
       case 'manageUsers':      navigationRef.navigate('ManageProfile');     break;
       case 'manageProducts':   navigationRef.navigate('ManageProducts');    break;
       case 'manageCategories': navigationRef.navigate('ManageCategories');  break;
@@ -249,6 +251,8 @@ export default function Header() {
               <>
                 {[
                   { action: 'admin',            icon: '🛠️', label: 'Quản lý hệ thống'    },
+                  { action: 'adminBulk',        icon: '🧾', label: 'Quản lý đơn hàng sỉ' },
+                  { action: 'invoiceTotals',    icon: '💰', label: 'Tổng hóa đơn theo quán' },
                   { action: 'manageUsers',       icon: '👥', label: 'Quản lý người dùng'  },
                   { action: 'manageProducts',    icon: '🥬', label: 'Quản lý sản phẩm'    },
                   { action: 'manageCategories',  icon: '📂', label: 'Quản lý danh mục'    },

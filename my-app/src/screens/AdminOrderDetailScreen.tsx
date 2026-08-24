@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, SafeAreaView, ScrollView, StyleSheet,
   Alert, Platform, Share, Text, TouchableOpacity, useWindowDimensions, View,
+  TextInput,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +36,7 @@ export default function AdminOrderDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
 
   const loadOrder = useCallback(async () => {
     if (!token) {
@@ -56,6 +58,11 @@ export default function AdminOrderDetailScreen() {
         : (payload.orders ?? []).find((item: any) => Number(item.id) === Number(orderId));
       if (!found) throw new Error('Không tìm thấy đơn hàng.');
       setOrder(found);
+      if (type === 'bulk') {
+        setPriceInputs(Object.fromEntries((found.items ?? []).map((item: any) => [
+          String(item.id), Number(item.pricePerKg) > 0 ? String(Number(item.pricePerKg)) : '',
+        ])));
+      }
     } catch (reason: any) {
       setError(reason?.message || 'Không thể tải chi tiết đơn hàng.');
     } finally {
@@ -79,10 +86,39 @@ export default function AdminOrderDetailScreen() {
     finally { setSaving(false); }
   };
 
+  const saveBulkPricing = async () => {
+    if (!token || type !== 'bulk') return;
+    const items = (order.items ?? []).map((item: any) => ({
+      id: item.id,
+      pricePerKg: Number(String(priceInputs[String(item.id)] ?? '').replace(/[^\d]/g, '')),
+    }));
+    if (items.some((item: any) => !Number.isFinite(item.pricePerKg) || item.pricePerKg <= 0)) {
+      Alert.alert('Thiếu đơn giá', 'Vui lòng nhập đơn giá lớn hơn 0 cho tất cả sản phẩm.');
+      return;
+    }
+    try {
+      setSaving(true); setError('');
+      const response = await fetch(`${BASE_URL}/admin/bulk-orders/${orderId}/pricing`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'Không thể lưu đơn giá.');
+      setOrder(payload.order);
+      Alert.alert('Thành công', `Đã tính tổng hóa đơn: ${money(payload.order.totalPrice)}`);
+    } catch (reason: any) { setError(reason?.message || 'Không thể lưu đơn giá.'); }
+    finally { setSaving(false); }
+  };
+
   const printOrder = async () => {
     const isNormalOrder = type === 'normal';
+    if (!isNormalOrder && (order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0)) {
+      Alert.alert('Chưa thể in', 'Vui lòng nhập và lưu đơn giá cho tất cả sản phẩm.');
+      return;
+    }
     const rows = (order.items ?? []).map((item: any, index: number) => `
-      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td><td>${isNormalOrder ? money(item.price) : '&nbsp;'}</td><td>${isNormalOrder ? money(Number(item.price) * Number(item.quantity)) : '&nbsp;'}</td></tr>
+      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td><td>${money(isNormalOrder ? item.price : item.pricePerKg)}</td><td>${money(isNormalOrder ? Number(item.price) * Number(item.quantity) : Number(item.kg) * Number(item.pricePerKg))}</td></tr>
       ${item.note ? `<tr class="note"><td></td><td colspan="4">Ghi chú: ${escapeHtml(item.note)}</td></tr>` : ''}
     `).join('');
     const title = isNormalOrder ? `Đơn hàng ${order.orderCode}` : `Đơn sỉ - ${order.userName || 'Cửa hàng'}`;
@@ -92,7 +128,7 @@ export default function AdminOrderDetailScreen() {
       if (!printWindow) { Alert.alert('Không thể in', 'Vui lòng cho phép trình duyệt mở cửa sổ mới.'); return; }
       printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
         @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0}h1{color:#1b5e20;margin:0 0 6px;font-size:24px}.sub{color:#64748b;margin-bottom:20px}.info{border:1px solid #9ca3af;padding:12px;margin-bottom:16px;line-height:1.8}.status{font-weight:700;color:#1b5e20}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#2e7d32;color:#fff;text-align:left}th,td{border:1px solid #6b7280;padding:8px}th:first-child,td:first-child{width:45px;text-align:center}th:nth-child(3),td:nth-child(3){width:95px;text-align:center;font-weight:700}th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){width:120px;text-align:right}tr:nth-child(even){background:#f1f8e9}.note td{font-size:11px;font-style:italic;color:#6b7280;background:#fff}.total{margin-top:16px;text-align:right;font-size:18px;font-weight:800}.footer{margin-top:22px;color:#64748b;font-size:11px;text-align:center}@media print{button{display:none}}
-      </style></head><body><h1>🥦 FreshVeggies</h1><div class="sub">${escapeHtml(title)}</div><div class="info"><b>${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}:</b> ${escapeHtml(order.userName)}<br>${isNormalOrder ? `<b>Số điện thoại:</b> ${escapeHtml(order.userPhone)}<br><b>Địa chỉ:</b> ${escapeHtml(order.shippingAddress)}<br>` : ''}<b>Ngày đặt:</b> ${escapeHtml(new Date(order.createdAt).toLocaleString('vi-VN'))}<br><b>Trạng thái:</b> <span class="status">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span>${!isNormalOrder ? '<br><b>TỔNG TIỀN:</b> ........................................................ đ' : ''}</div><table><thead><tr><th>STT</th><th>SẢN PHẨM</th><th>SỐ LƯỢNG</th><th>ĐƠN GIÁ</th><th>THÀNH TIỀN</th></tr></thead><tbody>${rows}</tbody></table>${isNormalOrder ? `<div class="total">TỔNG TIỀN: ${money(order.totalAmount)}</div>` : ''}<div class="footer">Bản in từ hệ thống quản lý FreshVeggies</div><script>window.onload=()=>{window.print()}<\/script></body></html>`);
+      </style></head><body><h1>🥦 FreshVeggies</h1><div class="sub">${escapeHtml(title)}</div><div class="info"><b>${isNormalOrder ? 'Khách hàng' : 'Cửa hàng'}:</b> ${escapeHtml(order.userName)}<br>${isNormalOrder ? `<b>Số điện thoại:</b> ${escapeHtml(order.userPhone)}<br><b>Địa chỉ:</b> ${escapeHtml(order.shippingAddress)}<br>` : ''}<b>Ngày đặt:</b> ${escapeHtml(new Date(order.createdAt).toLocaleString('vi-VN'))}<br><b>Trạng thái:</b> <span class="status">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span></div><table><thead><tr><th>STT</th><th>SẢN PHẨM</th><th>SỐ KG</th><th>ĐƠN GIÁ/KG</th><th>THÀNH TIỀN</th></tr></thead><tbody>${rows}</tbody></table><div class="total">TỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}</div><div class="footer">Bản in từ hệ thống quản lý FreshVeggies</div><script>window.onload=()=>{window.print()}<\/script></body></html>`);
       printWindow.document.close();
       return;
     }
@@ -152,7 +188,7 @@ export default function AdminOrderDetailScreen() {
 
         <View style={[s.itemsCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>Sản phẩm đã đặt ({order.items?.length ?? 0})</Text>
-          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>SỐ LƯỢNG</Text></View> : null}
+          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>KG × ĐƠN GIÁ</Text></View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
             <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, isMobile && s.itemRowMobile]}>
               {!isNormal ? <Text style={s.excelNo}>{index + 1}</Text> : null}
@@ -163,9 +199,16 @@ export default function AdminOrderDetailScreen() {
               </View>
               {isNormal ? <Text style={s.itemPrice}>{money(Number(item.price) * Number(item.quantity))}</Text> : null}
               {!isNormal ? (
-                <View style={s.quantityBox}>
-                  <Text style={s.quantityLabel}>SỐ LƯỢNG</Text>
-                  <Text style={s.quantityValue}>{item.kg}</Text>
+                <View style={s.pricingBox}>
+                  <Text style={s.formulaKg}>{item.kg} kg ×</Text>
+                  <TextInput
+                    value={priceInputs[String(item.id)] ?? ''}
+                    onChangeText={value => setPriceInputs(current => ({ ...current, [String(item.id)]: value.replace(/[^\d]/g, '') }))}
+                    placeholder="Đơn giá/kg"
+                    keyboardType="numeric"
+                    style={s.priceInput}
+                  />
+                  <Text style={s.lineSubtotal}>= {money(Number(item.kg) * Number(priceInputs[String(item.id)] || 0))}</Text>
                 </View>
               ) : null}
             </View>
@@ -178,6 +221,14 @@ export default function AdminOrderDetailScreen() {
             <View style={[s.totalRow, isMobile && s.summaryRowMobile]}><Text style={s.totalLabel}>Tổng thanh toán</Text><Text style={s.totalValue}>{money(total)}</Text></View>
           </View>
         ) : (
+          <>
+          <View style={[s.summaryCard, isMobile && s.cardMobile]}>
+            <TouchableOpacity disabled={saving} style={[s.calculateBtn, saving && { opacity: 0.6 }]} onPress={saveBulkPricing}>
+              <Text style={s.calculateBtnText}>{saving ? 'Đang lưu...' : '🧮 Lưu đơn giá & tính tổng'}</Text>
+            </TouchableOpacity>
+            <View style={s.totalRow}><Text style={s.totalLabel}>Tổng hóa đơn</Text><Text style={s.totalValue}>{money(order.totalPrice)}</Text></View>
+            <Text style={s.printHint}>Nhập đủ đơn giá và lưu trước khi in hóa đơn.</Text>
+          </View>
           <View style={[s.statusCard, isMobile && s.cardMobile]}>
             <Text style={s.sectionTitle}>Cập nhật trạng thái đơn sỉ</Text>
             {error ? <Text style={s.inlineError}>{error}</Text> : null}
@@ -189,6 +240,7 @@ export default function AdminOrderDetailScreen() {
               ))}
             </View>
           </View>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -230,6 +282,13 @@ const s = StyleSheet.create({
   quantityBox: { minWidth: 92, backgroundColor: '#e8f5e9', borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center' },
   quantityLabel: { fontSize: 9, color: '#558b2f', fontWeight: '900', letterSpacing: 0.7 },
   quantityValue: { fontSize: 27, lineHeight: 32, color: '#1b5e20', fontWeight: '900' },
+  pricingBox: { width: 230, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 6 },
+  formulaKg: { color: '#1b5e20', fontSize: 13, fontWeight: '900' },
+  priceInput: { width: 105, borderWidth: 1, borderColor: '#81c784', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 7, textAlign: 'right', color: '#263238', outlineStyle: 'none' } as any,
+  lineSubtotal: { width: '100%', textAlign: 'right', color: '#e65100', fontSize: 13, fontWeight: '900' },
+  calculateBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginBottom: 13 },
+  calculateBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  printHint: { color: '#78909c', fontSize: 11, textAlign: 'right', marginTop: 8 },
   statusCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, statusBtn: { borderWidth: 1, borderColor: '#a5d6a7', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 10 }, statusBtnText: { color: '#2e7d32', fontWeight: '800', fontSize: 12 }, inlineError: { color: '#c62828', marginBottom: 10 },
   summaryCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 13 }, summaryLabel: { color: '#607d8b' }, summaryValue: { color: '#263238', fontWeight: '700' },
   summaryRowMobile: { gap: 12, flexWrap: 'wrap' },

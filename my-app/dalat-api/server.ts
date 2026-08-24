@@ -1200,6 +1200,43 @@ async function startServer() {
 
     // ── ADMIN: ORDERS ────────────────────────────────────────
 
+    app.put(
+      "/admin/bulk-orders/:id/pricing",
+      authMiddleware,
+      adminMiddleware,
+      async (req, res) => {
+        try {
+          const { id } = req.params;
+          const items = req.body?.items;
+          if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "Phải nhập đơn giá cho sản phẩm" });
+          const [storedItems] = await pool.query("SELECT * FROM bulk_order_items WHERE bulkOrderId = ?", [id as string]) as [any[], any];
+          if (!storedItems.length) return res.status(404).json({ message: "Không tìm thấy đơn sỉ" });
+          const prices = new Map<number, number>();
+          for (const item of items) {
+            const itemId = Number(item?.id);
+            const price = Number(item?.pricePerKg);
+            if (!Number.isInteger(itemId) || !Number.isFinite(price) || price <= 0) return res.status(400).json({ message: "Đơn giá phải là số lớn hơn 0" });
+            prices.set(itemId, price);
+          }
+          if (storedItems.some(item => !prices.has(Number(item.id)))) return res.status(400).json({ message: "Vui lòng nhập đủ đơn giá cho tất cả sản phẩm" });
+          let totalPrice = 0;
+          for (const item of storedItems) {
+            const pricePerKg = prices.get(Number(item.id))!;
+            const subtotal = Number(item.kg) * pricePerKg;
+            totalPrice += subtotal;
+            await pool.query("UPDATE bulk_order_items SET pricePerKg = ?, subtotal = ? WHERE id = ? AND bulkOrderId = ?", [pricePerKg, subtotal, item.id, id as string]);
+          }
+          await pool.query("UPDATE bulk_orders SET totalPrice = ? WHERE id = ?", [totalPrice, id as string]);
+          const [orders] = await pool.query(`SELECT bo.*, u.name as userName, u.phone as userPhone, u.email as userEmail FROM bulk_orders bo JOIN users u ON bo.userId = u.id WHERE bo.id = ?`, [id as string]) as [any[], any];
+          const [updatedItems] = await pool.query("SELECT * FROM bulk_order_items WHERE bulkOrderId = ?", [id as string]) as [any[], any];
+          res.json({ message: "Đã lưu đơn giá và tính tổng hóa đơn", order: { ...orders[0], items: updatedItems } });
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ message: "Lỗi server khi tính giá đơn sỉ" });
+        }
+      },
+    );
+
     app.get(
       "/admin/orders",
       authMiddleware,

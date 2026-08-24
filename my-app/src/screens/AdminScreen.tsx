@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Modal, SafeAreaView, RefreshControl, TextInput,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useUserStore } from '@/store/userStore';
@@ -58,9 +58,10 @@ const fmtDate  = (s: string) => new Date(s).toLocaleDateString('vi-VN');
 // ─── Main Component ───────────────────────────────────────────────
 export default function OrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Admin'>>();
   const user = useUserStore(s => s.user);
 
-  const [orderTab,     setOrderTab]     = useState<OrderTab>('orders');
+  const [orderTab,     setOrderTab]     = useState<OrderTab>(route.params?.initialTab ?? 'orders');
   const [normalOrders, setNormal]       = useState<NormalOrder[]>([]);
   const [bulkOrders,   setBulk]         = useState<BulkOrder[]>([]);
   const [loading,      setLoading]      = useState(false);
