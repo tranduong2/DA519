@@ -184,14 +184,20 @@ export default function OrdersScreen() {
     >
       <View style={s.cardTop}>
         <View style={{ flex: 1 }}>
-          <Text style={s.storeLabel}>CỬA HÀNG ĐẶT ĐƠN</Text>
+          <Text style={s.storeLabel}>{o.orderCode} • ĐƠN HÀNG SỈ</Text>
           <Text style={s.storeName}>🏪 {o.userName || 'Chưa có tên cửa hàng'}</Text>
+          <Text style={s.bulkDate}>📅 {new Date(o.createdAt).toLocaleString('vi-VN')}</Text>
         </View>
         <View style={s.bulkCardActions}>
           {renderBadge(o.status)}
           <Text style={s.openArrow}>›</Text>
         </View>
       </View>
+      <View style={s.bulkSummaryRow}>
+        <View><Text style={s.bulkSummaryLabel}>Tổng khối lượng</Text><Text style={s.bulkKg}>{(o.items ?? []).reduce((sum, item) => sum + Number(item.kg || 0), 0).toLocaleString('vi-VN')} kg</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={s.bulkSummaryLabel}>Tổng hóa đơn</Text><Text style={s.bulkTotal}>{Number(o.totalPrice) > 0 ? fmtPrice(o.totalPrice) : 'Chưa tính giá'}</Text></View>
+      </View>
+      <Text style={s.viewHint}>Nhấn để xem chi tiết và in đơn →</Text>
     </TouchableOpacity>
   );
 
@@ -474,6 +480,11 @@ const s = StyleSheet.create({
   storeName: { fontSize: 18, color: '#1b5e20', fontWeight: '900' },
   openArrow: { fontSize: 30, lineHeight: 32, color: '#66bb6a', fontWeight: '700' },
   bulkCardActions: { alignItems: 'flex-end', gap: 5 },
+  bulkDate: { color: '#78909c', fontSize: 12, marginTop: 5, fontWeight: '600' },
+  bulkSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: '#e8f5e9', marginTop: 12, paddingTop: 11 },
+  bulkSummaryLabel: { color: '#90a4ae', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  bulkKg: { color: '#1b5e20', fontSize: 16, fontWeight: '900', marginTop: 3 },
+  bulkTotal: { color: '#e65100', fontSize: 16, fontWeight: '900', marginTop: 3 },
   bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8f5e9' },
   bulkItemName: { flex: 1, fontSize: 17, lineHeight: 23, color: '#263238', fontWeight: '900' },
   quantityBox: { minWidth: 86, backgroundColor: '#e8f5e9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
