@@ -35,6 +35,7 @@ import FlashSaleAdmin from '@/screens/Flashsaleadmin';
 import TaiKhoanScreen from '@/screens/Taikhoanscreen';
 import InventoryScreen from '@/screens/Inventoryscreen';
 import StoreInvoiceTotalsScreen from '@/screens/StoreInvoiceTotalsScreen';
+import StoreInvoiceStatementScreen from '@/screens/StoreInvoiceStatementScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -62,6 +63,7 @@ export default function AppNavigator() {
         <Stack.Screen name="BulkOrderTracking" component={BulkOrderTrackingScreen} />
         <Stack.Screen name="Admin"            component={AdminScreen} />
         <Stack.Screen name="StoreInvoiceTotals" component={StoreInvoiceTotalsScreen} />
+        <Stack.Screen name="StoreInvoiceStatement" component={StoreInvoiceStatementScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AdminOrderDetail" component={AdminOrderDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ManageProfile"    component={ManageProfile} />
         <Stack.Screen name="ManageProducts"   component={ManageProducts} />

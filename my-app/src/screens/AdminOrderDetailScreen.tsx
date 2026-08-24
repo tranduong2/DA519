@@ -199,11 +199,11 @@ export default function AdminOrderDetailScreen() {
           <TouchableOpacity style={[s.viewTab, bulkView === 'pricing' && s.viewTabActive]} onPress={() => setBulkView('pricing')}><Text style={[s.viewTabText, bulkView === 'pricing' && s.viewTabTextActive]}>🧮 Tính giá & hóa đơn</Text></TouchableOpacity>
         </View> : null}
 
-        <View style={[s.itemsCard, isMobile && s.cardMobile]}>
+        <View style={[s.itemsCard, !isNormal && s.excelCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>{!isNormal && bulkView === 'packing' ? 'Danh sách đóng hàng' : 'Sản phẩm đã đặt'} ({order.items?.length ?? 0})</Text>
           {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text>{bulkView === 'packing' ? <Text style={s.excelNote}>GHI CHÚ</Text> : null}</View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
-            <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, isMobile && s.itemRowMobile]}>
+            <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, !isNormal && index % 2 === 1 && s.excelRowAlt, isMobile && s.itemRowMobile]}>
               {!isNormal ? <Text style={s.excelNo}>{index + 1}</Text> : null}
               <View style={{ flex: 1 }}>
                 <Text style={isNormal ? s.itemName : s.bulkItemName}>{item.productName}</Text>
@@ -288,6 +288,7 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '900', color: '#1b5e20', marginBottom: 12 },
   customerName: { fontSize: 15, fontWeight: '800', color: '#263238', marginBottom: 7 }, info: { fontSize: 13, color: '#546e7a', lineHeight: 22 },
   itemsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#edf4ed' },
+  excelCard: { borderRadius: 2, borderWidth: 1, borderColor: '#78909c', padding: 12 },
   viewTabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 13, padding: 5, gap: 5 },
   viewTab: { flex: 1, borderRadius: 9, paddingVertical: 11, alignItems: 'center' }, viewTabActive: { backgroundColor: '#1b5e20' },
   viewTabText: { color: '#607d8b', fontWeight: '800', fontSize: 13 }, viewTabTextActive: { color: '#fff' },
@@ -296,7 +297,8 @@ const s = StyleSheet.create({
   excelProduct: { flex: 1, color: '#fff', fontWeight: '900', fontSize: 11 },
   excelQty: { width: 110, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
   excelNote: { width: 180, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
-  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderTopWidth: 0, borderColor: '#c8e6c9' },
+  bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 58, paddingVertical: 10, paddingHorizontal: 8, borderWidth: 1, borderTopWidth: 0, borderColor: '#78909c' },
+  excelRowAlt: { backgroundColor: '#eef7ee' },
   itemRowMobile: { alignItems: 'flex-start', gap: 7 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
   quantityBox: { minWidth: 92, backgroundColor: '#e8f5e9', borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center' },

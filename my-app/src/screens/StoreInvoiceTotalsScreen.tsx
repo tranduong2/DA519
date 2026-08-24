@@ -73,7 +73,7 @@ export default function StoreInvoiceTotalsScreen() {
         <ScrollView contentContainerStyle={s.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}>
           {error ? <Text style={s.error}>{error}</Text> : null}
           <View style={s.grandCard}><Text style={s.grandLabel}>TỔNG TẤT CẢ QUÁN</Text><Text style={s.grandValue}>{money(grandTotal)}</Text></View>
-          {stores.map((store: any) => <TouchableOpacity key={store.key} style={s.card} onPress={() => { setSelectedStore(store); setPeriodOffset(0); }}>
+          {stores.map((store: any) => <TouchableOpacity key={store.key} style={s.card} onPress={() => navigation.navigate('StoreInvoiceStatement', { storeKey: store.key, storeName: store.name })}>
             <Text style={s.storeName}>🏪 {store.name}</Text>
             {store.email ? <Text style={s.meta}>📧 {store.email}</Text> : null}
             {store.phone ? <Text style={s.meta}>📞 {store.phone}</Text> : null}
