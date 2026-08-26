@@ -114,6 +114,26 @@ export default function AdminOrderDetailScreen() {
     finally { setSaving(false); }
   };
 
+  const sendBulkInvoice = async () => {
+    if (!token || type !== 'bulk') return;
+    if ((order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0) || Number(order.totalPrice) <= 0) {
+      Alert.alert('Chưa thể gửi', 'Vui lòng nhập và lưu đủ đơn giá trước khi gửi hóa đơn.');
+      return;
+    }
+    try {
+      setSaving(true); setError('');
+      const response = await fetch(`${BASE_URL}/admin/bulk-orders/${orderId}/send-invoice`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'Không thể gửi hóa đơn.');
+      setOrder(payload.order);
+      Alert.alert('Đã gửi hóa đơn', `Hóa đơn ${money(payload.order.totalPrice)} đã gửi cho ${payload.order.userName || 'người đặt'}.`);
+    } catch (reason: any) { setError(reason?.message || 'Không thể gửi hóa đơn.'); }
+    finally { setSaving(false); }
+  };
+
   const printOrder = async () => {
     const isNormalOrder = type === 'normal';
     if (!isNormalOrder && (order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0)) {
@@ -251,7 +271,10 @@ export default function AdminOrderDetailScreen() {
               <Text style={s.calculateBtnText}>{saving ? 'Đang lưu...' : '🧮 Lưu đơn giá & tính tổng'}</Text>
             </TouchableOpacity>
             <View style={s.totalRow}><Text style={s.totalLabel}>Tổng hóa đơn</Text><Text style={s.totalValue}>{money(order.totalPrice)}</Text></View>
-            <Text style={s.printHint}>Nhập đủ đơn giá và lưu trước khi in hóa đơn.</Text>
+            <TouchableOpacity disabled={saving} style={[s.sendInvoiceBtn, saving && { opacity: 0.6 }]} onPress={sendBulkInvoice}>
+              <Text style={s.sendInvoiceText}>{order.invoiceSentAt ? 'Gửi lại hóa đơn cho người đặt' : 'Gửi hóa đơn cho người đặt'}</Text>
+            </TouchableOpacity>
+            <Text style={[s.printHint, order.invoiceSentAt && s.sentHint]}>{order.invoiceSentAt ? `Đã gửi: ${new Date(order.invoiceSentAt).toLocaleString('vi-VN')}` : 'Người đặt chỉ thấy đơn giá sau khi admin gửi hóa đơn.'}</Text>
           </View> : null}
           <View style={[s.statusCard, isMobile && s.cardMobile]}>
             <Text style={s.sectionTitle}>Cập nhật trạng thái đơn sỉ</Text>
@@ -341,7 +364,10 @@ const s = StyleSheet.create({
   packingNoteMobile: { width: 66, fontSize: 10, paddingHorizontal: 4 },
   calculateBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginBottom: 13 },
   calculateBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  sendInvoiceBtn: { backgroundColor: '#1565c0', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
+  sendInvoiceText: { color: '#fff', fontWeight: '900', fontSize: 13 },
   printHint: { color: '#78909c', fontSize: 11, textAlign: 'right', marginTop: 8 },
+  sentHint: { color: '#2e7d32', fontWeight: '700' },
   statusCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, statusBtn: { borderWidth: 1, borderColor: '#a5d6a7', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 10 }, statusBtnText: { color: '#2e7d32', fontWeight: '800', fontSize: 12 }, inlineError: { color: '#c62828', marginBottom: 10 },
   summaryCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18 }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 13 }, summaryLabel: { color: '#607d8b' }, summaryValue: { color: '#263238', fontWeight: '700' },
   summaryRowMobile: { gap: 12, flexWrap: 'wrap' },

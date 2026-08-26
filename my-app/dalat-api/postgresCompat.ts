@@ -9,7 +9,7 @@ const camelCaseIdentifiers = [
   'session_token', 'vipTierUpdatedAt', 'quarterlySpending', 'rewardPoints', 'vipQuarterKey', 'vipTier',
   'isFlashSale', 'salePrice', 'oldPrice', 'priceValue', 'imageUrl',
   'userId', 'totalAmount', 'createdAt', 'orderCode', 'paymentMethod', 'shippingAddress', 'estimatedDelivery', 'updatedAt',
-  'orderId', 'productId', 'productName', 'bulkOrderId', 'orderDate', 'totalPrice', 'pricePerKg',
+  'orderId', 'productId', 'productName', 'bulkOrderId', 'orderDate', 'totalPrice', 'pricePerKg', 'invoiceSentAt',
   'discountType', 'discountValue', 'minOrderValue', 'maxUsage', 'usedCount', 'startDate', 'endDate', 'isActive',
   'discountPct', 'activatedAt', 'createdBy', 'receiver', 'supplier',
   'totalProducts', 'totalStock', 'lowStock', 'flashSuggest', 'todayImport', 'todayExport',

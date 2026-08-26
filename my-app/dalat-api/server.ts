@@ -261,6 +261,15 @@ async function ensureOrderColumns() {
   }
 }
 
+async function ensureBulkOrderColumns() {
+  try {
+    await pool.query('ALTER TABLE bulk_orders ADD COLUMN IF NOT EXISTS invoiceSentAt TIMESTAMP NULL');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('⚠️ Bulk order migration warning:', message.substring(0, 150));
+  }
+}
+
 async function syncVipCycle(userId: number) {
   const [rows] = await pool.query(
     'SELECT id, vipTier, quarterlySpending, rewardPoints, vipQuarterKey FROM users WHERE id = ?',
@@ -416,6 +425,7 @@ async function startServer() {
     await migrateLegacyPasswords();
     await ensureInventoryTables();
     await ensureOrderColumns();
+    await ensureBulkOrderColumns();
 
     app.get('/health', (_req, res) => {
       res.json({ status: 'ok', database: 'supabase-postgres' });
@@ -1111,7 +1121,15 @@ async function startServer() {
               "SELECT * FROM bulk_order_items WHERE bulkOrderId = ?",
               [order.id],
             ) as [any[], any];
-            return { ...order, items: (Array.isArray(items) ? items : []) };
+            const invoiceSent = Boolean(order.invoiceSentAt);
+            return {
+              ...order,
+              invoiceSent,
+              totalPrice: invoiceSent ? order.totalPrice : 0,
+              items: (Array.isArray(items) ? items : []).map((item: any) => invoiceSent
+                ? item
+                : { ...item, pricePerKg: null, subtotal: null }),
+            };
           }),
         );
 
@@ -1226,13 +1244,48 @@ async function startServer() {
             totalPrice += subtotal;
             await pool.query("UPDATE bulk_order_items SET pricePerKg = ?, subtotal = ? WHERE id = ? AND bulkOrderId = ?", [pricePerKg, subtotal, item.id, id as string]);
           }
-          await pool.query("UPDATE bulk_orders SET totalPrice = ? WHERE id = ?", [totalPrice, id as string]);
+          await pool.query("UPDATE bulk_orders SET totalPrice = ?, invoiceSentAt = NULL WHERE id = ?", [totalPrice, id as string]);
           const [orders] = await pool.query(`SELECT bo.*, u.name as userName, u.phone as userPhone, u.email as userEmail FROM bulk_orders bo JOIN users u ON bo.userId = u.id WHERE bo.id = ?`, [id as string]) as [any[], any];
           const [updatedItems] = await pool.query("SELECT * FROM bulk_order_items WHERE bulkOrderId = ?", [id as string]) as [any[], any];
           res.json({ message: "Đã lưu đơn giá và tính tổng hóa đơn", order: { ...orders[0], items: updatedItems } });
         } catch (err) {
           console.error(err);
           res.status(500).json({ message: "Lỗi server khi tính giá đơn sỉ" });
+        }
+      },
+    );
+
+    app.put(
+      "/admin/bulk-orders/:id/send-invoice",
+      authMiddleware,
+      adminMiddleware,
+      async (req, res) => {
+        try {
+          const { id } = req.params;
+          const [orders] = await pool.query(
+            `SELECT bo.*, u.name as userName, u.phone as userPhone, u.email as userEmail
+             FROM bulk_orders bo JOIN users u ON bo.userId = u.id WHERE bo.id = ?`,
+            [id as string],
+          ) as [any[], any];
+          if (!orders.length) return res.status(404).json({ message: "Không tìm thấy đơn sỉ" });
+
+          const [items] = await pool.query(
+            "SELECT * FROM bulk_order_items WHERE bulkOrderId = ?",
+            [id as string],
+          ) as [any[], any];
+          if (!items.length || items.some((item: any) => Number(item.pricePerKg) <= 0)) {
+            return res.status(400).json({ message: "Vui lòng nhập và lưu đủ đơn giá trước khi gửi hóa đơn" });
+          }
+
+          await pool.query("UPDATE bulk_orders SET invoiceSentAt = NOW() WHERE id = ?", [id as string]);
+          const invoiceSentAt = new Date().toISOString();
+          res.json({
+            message: "Đã gửi hóa đơn cho người đặt",
+            order: { ...orders[0], invoiceSentAt, invoiceSent: true, items },
+          });
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ message: "Lỗi server khi gửi hóa đơn" });
         }
       },
     );
