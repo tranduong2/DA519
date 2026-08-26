@@ -29,7 +29,9 @@ const escapeHtml = (value: unknown) => String(value ?? '')
 export default function AdminOrderDetailScreen() {
   const navigation = useNavigation<DetailNav>();
   const { width } = useWindowDimensions();
-  const isMobile = width < 600;
+  // Trình duyệt mobile có thể báo viewport rộng hơn phần hiển thị thực tế
+  // (đặc biệt khi mở GitHub Pages), nên dùng breakpoint tablet để tránh ép cột.
+  const isMobile = width < 900;
   const { orderId, type } = useRoute<DetailRoute>().params;
   const token = useUserStore(state => state.token);
   const [order, setOrder] = useState<any>(null);
