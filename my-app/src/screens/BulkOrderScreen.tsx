@@ -247,7 +247,7 @@ export default function BulkOrderScreen() {
     const kgVal     = sel?.kg ?? 1;
 
     return (
-      <View style={[styles.row, isChecked && styles.rowActive]}>
+      <View style={[styles.row, isMobile && styles.rowMobile, isChecked && styles.rowActive]}>
 
         {/* Checkbox */}
         <TouchableOpacity style={styles.checkWrap} onPress={() => toggle(item)}>
@@ -257,8 +257,8 @@ export default function BulkOrderScreen() {
         </TouchableOpacity>
 
         {/* Info + Note */}
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <View style={[styles.info, isMobile && styles.infoMobile]}>
+          <Text style={styles.name} numberOfLines={isMobile ? 2 : 1}>{item.name}</Text>
           <Text style={styles.cat}>{item.cat}</Text>
           <Text style={styles.price}>{item.price.toLocaleString()}đ / kg</Text>
 
@@ -279,14 +279,15 @@ export default function BulkOrderScreen() {
         </View>
 
         {isAdmin && (
-          <View style={styles.adminRowActions}>
+          <View style={[styles.adminRowActions, isMobile && styles.adminRowActionsMobile]}>
             <TouchableOpacity style={styles.editProductBtn} onPress={() => openEditProduct(item)}><Text style={styles.editProductText}>Sửa</Text></TouchableOpacity>
             <TouchableOpacity style={styles.deleteProductBtn} onPress={() => deleteProduct(item)}><Text style={styles.deleteProductText}>Xóa</Text></TouchableOpacity>
           </View>
         )}
 
         {/* Kg controls */}
-        <View style={styles.kgCol}>
+        <View style={[styles.kgCol, isMobile && styles.kgColMobile]}>
+          {isMobile && <Text style={styles.mobileQtyLabel}>Số lượng</Text>}
           <View style={styles.kgWrap}>
             <TouchableOpacity style={styles.kgBtn} onPress={() => adjustKg(item, -0.5)}>
               <Text style={styles.kgBtnText}>−</Text>
@@ -315,10 +316,10 @@ export default function BulkOrderScreen() {
               <Text style={styles.kgBtnText}>+</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.kgLabel}>kg</Text>
+          <Text style={[styles.kgLabel, isMobile && styles.kgLabelMobile]}>kg</Text>
 
           {isChecked && kgVal > 0 && (
-            <Text style={styles.subtotal}>
+            <Text style={[styles.subtotal, isMobile && styles.subtotalMobile]}>
               {(item.price * kgVal).toLocaleString()}đ
             </Text>
           )}
@@ -371,12 +372,12 @@ export default function BulkOrderScreen() {
         data={filtered}
         keyExtractor={item => item.id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={[styles.listContent, isMobile && styles.listContentMobile]}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         ListFooterComponent={(
-          <View style={styles.customSection}>
+          <View style={[styles.customSection, isMobile && styles.customSectionMobile]}>
             <View style={[styles.customHeader, isMobile && styles.customHeaderMobile]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.customTitle}>➕ Sản phẩm khác</Text>
@@ -444,10 +445,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#c8e6c9',
   },
   searchInput: { flex: 1, fontSize: 14 },
+  listContent: { paddingBottom: 160 },
+  listContentMobile: { paddingHorizontal: 12, paddingBottom: 170 },
 
   row:       { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 12 },
+  rowMobile: { flexWrap: 'wrap', borderRadius: 14, marginBottom: 10, padding: 14, borderWidth: 1, borderColor: '#e1eee2' },
   rowActive: { backgroundColor: '#f1f8e9' },
-  separator: { height: 1, backgroundColor: '#e8f5e9' },
+  separator: { height: 1, backgroundColor: 'transparent' },
 
   checkWrap:      { marginRight: 10, marginTop: 2 },
   checkbox:       { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#c8e6c9', alignItems: 'center', justifyContent: 'center' },
@@ -455,6 +459,7 @@ const styles = StyleSheet.create({
   checkMark:      { color: '#fff', fontWeight: '800', fontSize: 14 },
 
   info:  { flex: 1, marginRight: 8 },
+  infoMobile: { minWidth: 0, marginRight: 0 },
   name:  { fontSize: 14, fontWeight: '700', color: '#1b5e20' },
   cat:   { fontSize: 11, color: '#888', marginTop: 1 },
   price: { fontSize: 12, color: '#388e3c', marginTop: 2 },
@@ -471,14 +476,19 @@ const styles = StyleSheet.create({
   },
 
   kgCol:  { alignItems: 'center', gap: 4 },
+  kgColMobile: { width: '100%', flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#dcebdc', gap: 8 },
+  mobileQtyLabel: { fontSize: 12, color: '#607d68', fontWeight: '700', marginRight: 'auto' },
   kgWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   kgBtn:  { width: 28, height: 28, borderRadius: 8, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   kgBtnText: { fontSize: 18, color: '#2e7d32', fontWeight: '700', lineHeight: 22 },
   kgInput:   { width: 44, height: 32, borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 8, textAlign: 'center', fontSize: 13, backgroundColor: '#fff', color: '#1b5e20' },
   kgInputZero: { borderColor: '#e53935', color: '#e53935' },
   kgLabel:   { fontSize: 11, color: '#888' },
+  kgLabelMobile: { fontSize: 12, marginRight: 4 },
   subtotal:  { fontSize: 12, color: '#e65100', fontWeight: '700', marginTop: 2 },
+  subtotalMobile: { fontSize: 13, marginTop: 0, marginLeft: 'auto' },
   adminRowActions: { flexDirection: 'row', gap: 6, alignSelf: 'center', marginRight: 12 },
+  adminRowActionsMobile: { width: '100%', justifyContent: 'flex-end', marginRight: 0, marginTop: 10 },
   editProductBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#81c784', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 7 },
   editProductText: { color: '#1b5e20', fontWeight: '900', fontSize: 11 },
   deleteProductBtn: { backgroundColor: '#ffebee', borderWidth: 1, borderColor: '#ef9a9a', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 7 },
@@ -493,6 +503,7 @@ const styles = StyleSheet.create({
   saveProductBtn: { backgroundColor: '#2e7d32', borderRadius: 9, paddingHorizontal: 18, paddingVertical: 10 }, saveProductText: { color: '#fff', fontWeight: '900' },
 
   customSection: { margin: 12, marginTop: 18, padding: 14, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#a5d6a7' },
+  customSectionMobile: { marginHorizontal: 0 },
   customHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   customHeaderMobile: { alignItems: 'stretch', flexDirection: 'column' },
   customTitle: { fontSize: 16, fontWeight: '900', color: '#1b5e20' },
@@ -503,15 +514,15 @@ const styles = StyleSheet.create({
   customEmpty: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#81c784', borderRadius: 10, padding: 16, alignItems: 'center' },
   customEmptyText: { color: '#2e7d32', fontWeight: '700', fontSize: 12 },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderTopWidth: 1, borderTopColor: '#e8f5e9' },
-  customRowMobile: { flexWrap: 'wrap', alignItems: 'flex-start', paddingVertical: 12 },
+  customRowMobile: { flexWrap: 'wrap', alignItems: 'flex-start', paddingVertical: 14, gap: 8 },
   customNumber: { width: 25, height: 25, borderRadius: 13, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   customNumberText: { color: '#2e7d32', fontWeight: '900', fontSize: 11 },
   customFields: { flex: 1, gap: 5 },
-  customFieldsMobile: { flexBasis: '82%', minWidth: 0 },
+  customFieldsMobile: { flexBasis: 0, minWidth: 0 },
   customNameInput: { borderWidth: 1, borderColor: '#c8e6c9', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 8, color: '#263238', fontSize: 13, outlineStyle: 'none' } as any,
   customNoteInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, color: '#546e7a', fontSize: 11, outlineStyle: 'none' } as any,
   customQtyWrap: { alignItems: 'center' },
-  customQtyWrapMobile: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 33, marginTop: 4 },
+  customQtyWrapMobile: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 33, marginTop: 2 },
   customQtyInput: { width: 58, borderWidth: 1, borderColor: '#81c784', borderRadius: 8, paddingVertical: 8, textAlign: 'center', color: '#1b5e20', fontWeight: '900', outlineStyle: 'none' } as any,
   customKg: { fontSize: 10, color: '#78909c', marginTop: 2 },
   customRemove: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#ffebee', alignItems: 'center', justifyContent: 'center' },

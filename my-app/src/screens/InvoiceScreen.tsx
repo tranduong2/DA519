@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Share, Modal, ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +20,9 @@ const getPrice = (price: string | number): number => {
 };
 
 export default function InvoiceScreen() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
+  const priceColumnWidth = isMobile ? 92 : 112;
   const navigation = useNavigation<NavProp>();
   const route      = useRoute<RoutePropType>();
   const addToCart  = useCartStore(state => state.addToCart);
@@ -178,11 +182,11 @@ export default function InvoiceScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, isMobile && styles.scrollMobile]}>
 
         {/* Header hóa đơn */}
-        <View style={styles.invoiceHeader}>
-          <Text style={styles.brand}>🥦 FreshVeggies</Text>
+        <View style={[styles.invoiceHeader, isMobile && styles.invoiceHeaderMobile]}>
+          <Text style={[styles.brand, isMobile && styles.brandMobile]}>🥦 FreshVeggies</Text>
           <Text style={styles.invoiceTitle}>ĐƠN HÀNG SỐ LƯỢNG LỚN</Text>
           <View style={styles.codeRow}>
             <Text style={styles.code}>#{orderCode}</Text>
@@ -206,14 +210,14 @@ export default function InvoiceScreen() {
           <View style={styles.tableHead}>
             <Text style={[styles.thText, { flex: 0.3 }]}>STT</Text>
             <Text style={[styles.thText, { flex: 1 }]}>Sản phẩm</Text>
-            <Text style={[styles.thText, { width: 112, textAlign: 'right' }]}>KG × ĐƠN GIÁ</Text>
+            <Text style={[styles.thText, { width: priceColumnWidth, textAlign: 'right' }]}>KG × ĐƠN GIÁ</Text>
           </View>
           {checkedItems.map((s, i) => (
             <View key={String(s.product.id)} style={[styles.tableRow, i % 2 === 0 && styles.tableRowEven]}>
               <View style={styles.tableRowTop}>
                 <Text style={styles.tdNo}>{i + 1}</Text>
                 <Text style={styles.tdName} numberOfLines={2}>{s.product.name}</Text>
-                <View style={{ width: 112, alignItems: 'flex-end' }}>
+                <View style={{ width: priceColumnWidth, alignItems: 'flex-end' }}>
                   <Text style={styles.tdKg}>{s.kg} kg × {formatMoney(getPrice(s.product.price))}</Text>
                   <Text style={styles.tdPrice}>{formatMoney(s.kg * getPrice(s.product.price))}</Text>
                 </View>
@@ -234,15 +238,15 @@ export default function InvoiceScreen() {
               <Text style={styles.totalLabel}>Tổng kg</Text>
               <Text style={styles.totalVal}>{checkedItems.reduce((s, i) => s + i.kg, 0)} kg</Text>
             </View>
-            <TouchableOpacity style={styles.calculateBtn} onPress={() => setCalculatedTotal(totalPrice)}>
+            <TouchableOpacity style={[styles.calculateBtn, isMobile && styles.calculateBtnMobile]} onPress={() => setCalculatedTotal(totalPrice)}>
               <Text style={styles.calculateBtnText}>🧮 Tính tổng tất cả tiền</Text>
             </TouchableOpacity>
             {calculatedTotal !== null && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.totalRow}>
-                  <Text style={styles.grandLabel}>TỔNG THANH TOÁN</Text>
-                  <Text style={styles.grandPrice}>{formatMoney(calculatedTotal)}</Text>
+                  <Text style={[styles.grandLabel, isMobile && styles.grandLabelMobile]}>TỔNG THANH TOÁN</Text>
+                  <Text style={[styles.grandPrice, isMobile && styles.grandPriceMobile]}>{formatMoney(calculatedTotal)}</Text>
                 </View>
               </>
             )}
@@ -259,7 +263,7 @@ export default function InvoiceScreen() {
       </ScrollView>
 
       {/* Bottom buttons */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, isMobile && styles.bottomBarMobile]}>
         <TouchableOpacity style={styles.btnShare} onPress={handleShare}>
           <Text style={styles.btnShareText}>📤 Gửi cho Admin</Text>
         </TouchableOpacity>
@@ -314,57 +318,64 @@ const styles = StyleSheet.create({
   shareBtn: { color: '#a5d6a7', fontSize: 14, fontWeight: '700' },
 
   scroll: { padding: 16, paddingBottom: 120 },
+  scrollMobile: { padding: 12, paddingBottom: 116 },
 
   invoiceHeader: { alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, elevation: 2 },
+  invoiceHeaderMobile: { padding: 14, borderRadius: 12, marginBottom: 12 },
   brand:         { fontSize: 26, fontWeight: '900', color: '#1b5e20' },
+  brandMobile:   { fontSize: 21 },
   invoiceTitle:  { fontSize: 12, color: '#888', letterSpacing: 1.5, marginTop: 4 },
   codeRow:       { marginTop: 10, backgroundColor: '#e8f5e9', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 4 },
   code:          { fontSize: 15, fontWeight: '800', color: '#2e7d32' },
   date:          { fontSize: 12, color: '#aaa', marginTop: 6 },
 
-  section:      { marginBottom: 14 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#888', letterSpacing: 1, marginBottom: 6 },
+  section:      { marginBottom: 12 },
+  sectionTitle: { fontSize: 10, fontWeight: '800', color: '#777', letterSpacing: 0.6, marginBottom: 6 },
 
   customerBox: { backgroundColor: '#fff', borderRadius: 12, padding: 12, elevation: 1 },
   infoRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  infoLabel:   { fontSize: 13, color: '#888' },
-  infoValue:   { fontSize: 13, fontWeight: '700', color: '#1b5e20' },
+  infoLabel:   { fontSize: 12, color: '#888' },
+  infoValue:   { flex: 1, marginLeft: 12, textAlign: 'right', fontSize: 12, fontWeight: '700', color: '#1b5e20' },
 
   tableHead: {
     flexDirection: 'row', backgroundColor: '#2e7d32',
-    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 2,
+    paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8, marginBottom: 2,
   },
-  thText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  thText: { fontSize: 9, fontWeight: '800', color: '#fff' },
 
-  tableRow:     { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' },
+  tableRow:     { paddingHorizontal: 8, paddingVertical: 7, backgroundColor: '#fff' },
   tableRowEven: { backgroundColor: '#f9fef9' },
   tableRowTop:  { flexDirection: 'row', alignItems: 'flex-start' },
-  tdNo:    { fontSize: 12, color: '#aaa', width: 24 },
-  tdName:  { flex: 1, fontSize: 13, fontWeight: '700', color: '#1b5e20' },
-  tdKg:    { fontSize: 11, color: '#555', textAlign: 'right' },
-  tdPrice: { fontSize: 13, fontWeight: '800', color: '#e65100', textAlign: 'right', marginTop: 3 },
-  tdNote:  { fontSize: 11, color: '#888', fontStyle: 'italic', marginTop: 3, marginLeft: 24 },
+  tdNo:    { fontSize: 10, color: '#999', width: 24 },
+  tdName:  { flex: 1, fontSize: 11, lineHeight: 15, fontWeight: '700', color: '#1b5e20', paddingRight: 5 },
+  tdKg:    { fontSize: 9, color: '#555', textAlign: 'right' },
+  tdPrice: { fontSize: 11, fontWeight: '800', color: '#e65100', textAlign: 'right', marginTop: 2 },
+  tdNote:  { fontSize: 9, lineHeight: 13, color: '#777', fontStyle: 'italic', marginTop: 3, marginLeft: 24 },
 
   totalBox:   { backgroundColor: '#fff', borderRadius: 12, padding: 14, elevation: 1 },
   totalRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  totalLabel: { fontSize: 13, color: '#888' },
-  totalVal:   { fontSize: 13, fontWeight: '600', color: '#333' },
+  totalLabel: { fontSize: 12, color: '#888' },
+  totalVal:   { fontSize: 12, fontWeight: '600', color: '#333' },
   divider:    { height: 1, backgroundColor: '#e8f5e9', marginVertical: 8 },
   grandLabel: { fontSize: 16, fontWeight: '900', color: '#1b5e20' },
   grandPrice: { fontSize: 22, fontWeight: '900', color: '#e65100' },
-  calculateBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#66bb6a', borderRadius: 10, paddingVertical: 11, alignItems: 'center', marginTop: 10 },
-  calculateBtnText: { color: '#1b5e20', fontSize: 14, fontWeight: '800' },
+  grandLabelMobile: { fontSize: 12 },
+  grandPriceMobile: { fontSize: 18 },
+  calculateBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#66bb6a', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 9 },
+  calculateBtnMobile: { paddingVertical: 9 },
+  calculateBtnText: { color: '#1b5e20', fontSize: 12, fontWeight: '800' },
 
   footNote:     { backgroundColor: '#fff3e0', borderRadius: 12, padding: 12, gap: 4 },
-  footNoteText: { fontSize: 12, color: '#e65100', textAlign: 'center' },
+  footNoteText: { fontSize: 10, lineHeight: 14, color: '#e65100', textAlign: 'center' },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff', padding: 14, gap: 10,
     borderTopWidth: 1, borderTopColor: '#e8f5e9', elevation: 10,
   },
+  bottomBarMobile: { padding: 10, gap: 7 },
   btnShare:       { borderWidth: 1.5, borderColor: '#2e7d32', borderRadius: 14, height: 46, alignItems: 'center', justifyContent: 'center' },
-  btnShareText:   { color: '#2e7d32', fontWeight: '700', fontSize: 14 },
+  btnShareText:   { color: '#2e7d32', fontWeight: '700', fontSize: 12 },
   btnConfirm:     { backgroundColor: '#2e7d32', borderRadius: 14, height: 50, alignItems: 'center', justifyContent: 'center' },
-  btnConfirmText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  btnConfirmText: { color: '#fff', fontWeight: '900', fontSize: 13 },
 });

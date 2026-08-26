@@ -164,7 +164,7 @@ export default function AdminOrderDetailScreen() {
       <View style={[s.topBar, isMobile && s.topBarMobile]}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.pageTitle}>{isNormal ? 'Chi tiết đơn hàng' : 'Chi tiết đơn sỉ'}</Text>
+          <Text style={[s.pageTitle, isMobile && s.pageTitleMobile]} numberOfLines={1}>{isNormal ? 'Chi tiết đơn hàng' : 'Chi tiết đơn sỉ'}</Text>
           <Text style={isNormal ? s.orderCode : s.headerStoreName}>
             {isNormal ? order.orderCode : `🏪 ${order.userName || 'Chưa có tên cửa hàng'}`}
           </Text>
@@ -172,7 +172,7 @@ export default function AdminOrderDetailScreen() {
         {isNormal ? (
           <TouchableOpacity style={[s.printBtn, isMobile && s.printBtnMobile]} onPress={printOrder}><Text style={s.printBtnText}>🖨️ In đơn</Text></TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[s.invoicePrintBtn, isMobile && s.printBtnMobile]} onPress={printOrder}><Text style={s.invoicePrintText}>🧾y {isMobile ? 'In hóa đơn' : 'In hóa đơn có giá'}</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.invoicePrintBtn, isMobile && s.printBtnMobile]} onPress={printOrder}><Text style={s.invoicePrintText}>In</Text></TouchableOpacity>
         )}
         <View style={[s.badge, isMobile && s.badgeMobile, { backgroundColor: STATUS_COLORS[order.status] ?? '#607d8b' }]}><Text style={s.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text></View>
       </View>
@@ -195,34 +195,43 @@ export default function AdminOrderDetailScreen() {
         )}
 
         {!isNormal ? <View style={s.viewTabs}>
-          <TouchableOpacity style={[s.viewTab, bulkView === 'packing' && s.viewTabActive]} onPress={() => setBulkView('packing')}><Text style={[s.viewTabText, bulkView === 'packing' && s.viewTabTextActive]}>📦 Bảng đóng hàng</Text></TouchableOpacity>
-          <TouchableOpacity style={[s.viewTab, bulkView === 'pricing' && s.viewTabActive]} onPress={() => setBulkView('pricing')}><Text style={[s.viewTabText, bulkView === 'pricing' && s.viewTabTextActive]}>🧮 Tính giá & hóa đơn</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.viewTab, bulkView === 'packing' && s.viewTabActive]} onPress={() => setBulkView('packing')}><Text numberOfLines={1} style={[s.viewTabText, isMobile && s.viewTabTextMobile, bulkView === 'packing' && s.viewTabTextActive]}>📦 Bảng đóng hàng</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.viewTab, bulkView === 'pricing' && s.viewTabActive]} onPress={() => setBulkView('pricing')}><Text numberOfLines={1} style={[s.viewTabText, isMobile && s.viewTabTextMobile, bulkView === 'pricing' && s.viewTabTextActive]}>🧮 Tính giá & hóa đơn</Text></TouchableOpacity>
         </View> : null}
 
         <View style={[s.itemsCard, !isNormal && s.excelCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>{!isNormal && bulkView === 'packing' ? 'Danh sách đóng hàng' : 'Sản phẩm đã đặt'} ({order.items?.length ?? 0})</Text>
-          {!isNormal ? <View style={s.excelHead}><Text style={s.excelNo}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={s.excelQty}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text>{bulkView === 'packing' ? <Text style={s.excelNote}>GHI CHÚ</Text> : null}</View> : null}
+          {!isNormal ? <View style={s.excelHead}><Text style={[s.excelNo, isMobile && s.excelNoMobile]}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={[s.excelQty, isMobile && (bulkView === 'packing' ? s.excelQtyMobile : s.excelPricingQtyMobile)]}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text>{bulkView === 'packing' && !isMobile ? <Text style={s.excelNote}>GHI CHÚ</Text> : null}</View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
-            <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, !isNormal && index % 2 === 1 && s.excelRowAlt, isMobile && s.itemRowMobile]}>
-              {!isNormal ? <Text style={s.excelNo}>{index + 1}</Text> : null}
-              <View style={{ flex: 1 }}>
-                <Text style={isNormal ? s.itemName : s.bulkItemName}>{item.productName}</Text>
+            !isNormal && isMobile && bulkView === 'packing' ? (
+              <View key={item.id ?? index} style={[s.bulkItemRow, s.packingRowMobile, index % 2 === 1 && s.excelRowAlt]}>
+                <View style={s.packingMainMobile}>
+                  <Text style={[s.excelNo, s.excelNoMobile]}>{index + 1}</Text>
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={[s.bulkItemName, s.bulkItemNameMobile, s.packingNameMobile]}>{item.productName}</Text>
+                  <Text numberOfLines={1} style={[s.packingKg, s.packingKgMobile]}>{item.kg} kg</Text>
+                </View>
+                <Text numberOfLines={2} ellipsizeMode="tail" style={s.packingNoteBelowMobile}>Ghi chú: {item.note || 'Không có'}</Text>
+              </View>
+            ) : <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, !isNormal && index % 2 === 1 && s.excelRowAlt, isMobile && s.itemRowMobile]}>
+              {!isNormal ? <Text style={[s.excelNo, isMobile && s.excelNoMobile]}>{index + 1}</Text> : null}
+              <View style={s.productCell}>
+                <Text numberOfLines={isNormal ? 2 : 1} ellipsizeMode="tail" style={[isNormal ? s.itemName : s.bulkItemName, !isNormal && isMobile && s.bulkItemNameMobile]}>{item.productName}</Text>
                 {isNormal ? <Text style={s.itemMeta}>Số lượng: {item.quantity}</Text> : null}
                 {isNormal && item.note ? <Text style={s.note}>Ghi chú: {item.note}</Text> : null}
               </View>
               {isNormal ? <Text style={s.itemPrice}>{money(Number(item.price) * Number(item.quantity))}</Text> : null}
               {!isNormal ? (
-                bulkView === 'pricing' ? <View style={s.pricingBox}>
+                bulkView === 'pricing' ? <View style={[s.pricingBox, isMobile && s.pricingBoxMobile]}>
                   <Text style={s.formulaKg}>{item.kg} kg ×</Text>
                   <TextInput
                     value={priceInputs[String(item.id)] ?? ''}
                     onChangeText={value => setPriceInputs(current => ({ ...current, [String(item.id)]: value.replace(/[^\d]/g, '') }))}
                     placeholder="Đơn giá/kg"
                     keyboardType="numeric"
-                    style={s.priceInput}
+                    style={[s.priceInput, isMobile && s.priceInputMobile]}
                   />
                   <Text style={s.lineSubtotal}>= {money(Number(item.kg) * Number(priceInputs[String(item.id)] || 0))}</Text>
-                </View> : <><Text style={s.packingKg}>{item.kg} kg</Text><Text style={s.packingNote}>{item.note || '—'}</Text></>
+                </View> : <><Text numberOfLines={1} style={[s.packingKg, isMobile && s.packingKgMobile]}>{item.kg} kg</Text><Text numberOfLines={1} ellipsizeMode="tail" style={[s.packingNote, isMobile && s.packingNoteMobile]}>{item.note || '—'}</Text></>
               ) : null}
             </View>
           ))}
@@ -269,6 +278,7 @@ const s = StyleSheet.create({
   backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#e8f5e9', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 31, lineHeight: 34, color: '#1b5e20', fontWeight: '500' },
   pageTitle: { fontSize: 19, fontWeight: '900', color: '#1b5e20' }, orderCode: { fontSize: 12, color: '#78909c', marginTop: 2 },
+  pageTitleMobile: { fontSize: 15 },
   headerStoreName: { fontSize: 14, color: '#2e7d32', fontWeight: '800', marginTop: 2 },
   printBtn: { backgroundColor: '#e8f5e9', borderWidth: 1, borderColor: '#81c784', borderRadius: 9, paddingHorizontal: 13, paddingVertical: 8 },
   printBtnMobile: { paddingHorizontal: 9, paddingVertical: 7 },
@@ -292,24 +302,39 @@ const s = StyleSheet.create({
   viewTabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 13, padding: 5, gap: 5 },
   viewTab: { flex: 1, borderRadius: 9, paddingVertical: 11, alignItems: 'center' }, viewTabActive: { backgroundColor: '#1b5e20' },
   viewTabText: { color: '#607d8b', fontWeight: '800', fontSize: 13 }, viewTabTextActive: { color: '#fff' },
+  viewTabTextMobile: { fontSize: 11 },
   excelHead: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2e7d32', paddingVertical: 10, paddingHorizontal: 8, borderWidth: 1, borderColor: '#1b5e20' },
   excelNo: { width: 44, textAlign: 'center', fontWeight: '800', color: '#607d8b' },
+  excelNoMobile: { width: 30, fontSize: 10 },
   excelProduct: { flex: 1, color: '#fff', fontWeight: '900', fontSize: 11 },
   excelQty: { width: 110, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
+  excelQtyMobile: { width: 68, fontSize: 9 },
+  excelPricingQtyMobile: { width: 154, fontSize: 9 },
   excelNote: { width: 180, textAlign: 'center', color: '#fff', fontWeight: '900', fontSize: 11 },
+  excelNoteMobile: { width: 66, fontSize: 9 },
   bulkItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 58, paddingVertical: 10, paddingHorizontal: 8, borderWidth: 1, borderTopWidth: 0, borderColor: '#78909c' },
   excelRowAlt: { backgroundColor: '#eef7ee' },
-  itemRowMobile: { alignItems: 'flex-start', gap: 7 },
+  itemRowMobile: { alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 6, paddingVertical: 7 },
+  packingRowMobile: { flexDirection: 'column', alignItems: 'stretch', gap: 3, minHeight: 0, paddingHorizontal: 6, paddingVertical: 7 },
+  packingMainMobile: { flexDirection: 'row', alignItems: 'center', width: '100%' },
+  packingNameMobile: { flex: 1, minWidth: 0, paddingHorizontal: 5 },
+  packingNoteBelowMobile: { marginLeft: 30, paddingHorizontal: 5, color: '#78909c', fontSize: 9, lineHeight: 12, fontStyle: 'italic' },
+  productCell: { flex: 1, minWidth: 0 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
+  bulkItemNameMobile: { fontSize: 12, lineHeight: 16 },
   quantityBox: { minWidth: 92, backgroundColor: '#e8f5e9', borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center' },
   quantityLabel: { fontSize: 9, color: '#558b2f', fontWeight: '900', letterSpacing: 0.7 },
   quantityValue: { fontSize: 27, lineHeight: 32, color: '#1b5e20', fontWeight: '900' },
   pricingBox: { width: 230, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 6 },
+  pricingBoxMobile: { width: 154, gap: 4 },
   formulaKg: { color: '#1b5e20', fontSize: 13, fontWeight: '900' },
   priceInput: { width: 105, borderWidth: 1, borderColor: '#81c784', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 7, textAlign: 'right', color: '#263238', outlineStyle: 'none' } as any,
+  priceInputMobile: { width: 88, paddingHorizontal: 6, paddingVertical: 5, fontSize: 12 },
   lineSubtotal: { width: '100%', textAlign: 'right', color: '#e65100', fontSize: 13, fontWeight: '900' },
   packingKg: { width: 110, textAlign: 'center', color: '#1b5e20', fontSize: 18, fontWeight: '900' },
+  packingKgMobile: { width: 68, fontSize: 12 },
   packingNote: { width: 180, color: '#6d4c41', fontSize: 12, paddingHorizontal: 8 },
+  packingNoteMobile: { width: 66, fontSize: 10, paddingHorizontal: 4 },
   calculateBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginBottom: 13 },
   calculateBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
   printHint: { color: '#78909c', fontSize: 11, textAlign: 'right', marginTop: 8 },
