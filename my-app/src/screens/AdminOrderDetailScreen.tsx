@@ -203,16 +203,16 @@ export default function AdminOrderDetailScreen() {
 
         <View style={[s.itemsCard, !isNormal && s.excelCard, isMobile && s.cardMobile]}>
           <Text style={s.sectionTitle}>{!isNormal && bulkView === 'packing' ? 'Danh sách đóng hàng' : 'Sản phẩm đã đặt'} ({order.items?.length ?? 0})</Text>
-          {!isNormal ? <View style={s.excelHead}><Text style={[s.excelNo, isMobile && s.excelNoMobile]}>STT</Text><Text style={s.excelProduct}>SẢN PHẨM</Text><Text style={[s.excelQty, isMobile && (bulkView === 'packing' ? s.excelQtyMobile : s.excelPricingQtyMobile)]}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text>{bulkView === 'packing' && !isMobile ? <Text style={s.excelNote}>GHI CHÚ</Text> : null}</View> : null}
+          {!isNormal ? <View style={s.excelHead}><Text style={[s.excelNo, bulkView === 'packing' && s.excelNoMobile, isMobile && s.excelNoMobile]}>STT</Text><Text numberOfLines={1} style={s.excelProduct}>SẢN PHẨM</Text><Text numberOfLines={1} style={[s.excelQty, bulkView === 'packing' && s.excelQtyMobile, isMobile && bulkView === 'pricing' && s.excelPricingQtyMobile]}>{bulkView === 'packing' ? 'SỐ KG' : 'KG × ĐƠN GIÁ'}</Text></View> : null}
           {(order.items ?? []).map((item: any, index: number) => (
-            !isNormal && isMobile && bulkView === 'packing' ? (
+            !isNormal && bulkView === 'packing' ? (
               <View key={item.id ?? index} style={[s.bulkItemRow, s.packingRowMobile, index % 2 === 1 && s.excelRowAlt]}>
                 <View style={s.packingMainMobile}>
                   <Text style={[s.excelNo, s.excelNoMobile]}>{index + 1}</Text>
-                  <Text numberOfLines={1} ellipsizeMode="tail" style={[s.bulkItemName, s.bulkItemNameMobile, s.packingNameMobile]}>{item.productName}</Text>
-                  <Text numberOfLines={1} style={[s.packingKg, s.packingKgMobile]}>{item.kg} kg</Text>
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={[s.bulkItemName, s.packingNameMobile, isMobile && s.bulkItemNameMobile]}>{item.productName}</Text>
+                  <Text numberOfLines={1} style={[s.packingKg, s.packingKgMobile, isMobile && s.packingKgTextMobile]}>{item.kg} kg</Text>
                 </View>
-                <Text numberOfLines={2} ellipsizeMode="tail" style={s.packingNoteBelowMobile}>Ghi chú: {item.note || 'Không có'}</Text>
+                <Text numberOfLines={2} ellipsizeMode="tail" style={[s.packingNoteBelowMobile, isMobile && s.packingNoteTextMobile]}>Ghi chú: {item.note || 'Không có'}</Text>
               </View>
             ) : <View key={item.id ?? index} style={[isNormal ? s.itemRow : s.bulkItemRow, !isNormal && index % 2 === 1 && s.excelRowAlt, isMobile && s.itemRowMobile]}>
               {!isNormal ? <Text style={[s.excelNo, isMobile && s.excelNoMobile]}>{index + 1}</Text> : null}
@@ -321,6 +321,7 @@ const s = StyleSheet.create({
   packingMainMobile: { flexDirection: 'row', alignItems: 'center', width: '100%' },
   packingNameMobile: { flex: 1, minWidth: 0, paddingHorizontal: 5 },
   packingNoteBelowMobile: { marginLeft: 30, paddingHorizontal: 5, color: '#78909c', fontSize: 9, lineHeight: 12, fontStyle: 'italic' },
+  packingNoteTextMobile: { fontSize: 8, lineHeight: 11 },
   productCell: { flex: 1, minWidth: 0 },
   itemName: { fontSize: 14, color: '#263238', fontWeight: '800' }, bulkItemName: { fontSize: 19, lineHeight: 25, color: '#263238', fontWeight: '900' }, itemMeta: { fontSize: 12, color: '#78909c', marginTop: 4 }, note: { fontSize: 12, color: '#8d6e63', fontStyle: 'italic', marginTop: 4 }, itemPrice: { fontSize: 14, color: '#e65100', fontWeight: '900' },
   bulkItemNameMobile: { fontSize: 12, lineHeight: 16 },
@@ -335,6 +336,7 @@ const s = StyleSheet.create({
   lineSubtotal: { width: '100%', textAlign: 'right', color: '#e65100', fontSize: 13, fontWeight: '900' },
   packingKg: { width: 110, textAlign: 'center', color: '#1b5e20', fontSize: 18, fontWeight: '900' },
   packingKgMobile: { width: 68, fontSize: 12 },
+  packingKgTextMobile: { fontSize: 11 },
   packingNote: { width: 180, color: '#6d4c41', fontSize: 12, paddingHorizontal: 8 },
   packingNoteMobile: { width: 66, fontSize: 10, paddingHorizontal: 4 },
   calculateBtn: { backgroundColor: '#2e7d32', borderRadius: 11, paddingVertical: 12, alignItems: 'center', marginBottom: 13 },
