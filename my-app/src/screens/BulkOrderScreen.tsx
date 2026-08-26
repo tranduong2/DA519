@@ -44,6 +44,7 @@ export default function BulkOrderScreen() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [selected, setSelected] = useState<Record<string, SelectedItem>>({});
+  const [kgInputs, setKgInputs] = useState<Record<string, string>>({});
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
@@ -133,7 +134,8 @@ export default function BulkOrderScreen() {
   };
 
   const setKg = (id: string, val: string, product: Product) => {
-    const num = parseFloat(val);
+    const normalized = val.replace(',', '.');
+    const num = parseFloat(normalized);
     if (val === '' || isNaN(num)) {
       setSelected(prev => ({ ...prev, [id]: { ...prev[id], kg: 0 } }));
       return;
@@ -168,6 +170,11 @@ export default function BulkOrderScreen() {
 
   const adjustKg = (item: Product, delta: number) => {
     if (!selected[item.id]?.checked) toggle(item);
+    setKgInputs(current => {
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
     const cur  = selected[item.id]?.kg ?? 1;
     const next = Math.round((cur + delta) * 10) / 10;
     setKg(item.id, String(Math.max(0, next)), item);
@@ -296,11 +303,13 @@ export default function BulkOrderScreen() {
             <TextInput
               style={[styles.kgInput, kgVal === 0 && styles.kgInputZero]}
               keyboardType="decimal-pad"
-              value={sel ? String(sel.kg) : '1'}
+              value={kgInputs[item.id] ?? (sel ? String(sel.kg).replace('.', ',') : '1')}
               onFocus={() => { if (!isChecked) toggle(item); }}
               onChangeText={val => {
                 if (!isChecked) toggle(item);
-                setKg(item.id, val, item);
+                const cleaned = val.replace(/[^0-9,.]/g, '').replace(/([,.].*)[,.]/g, '$1');
+                setKgInputs(current => ({ ...current, [item.id]: cleaned }));
+                setKg(item.id, cleaned, item);
               }}
               onBlur={() => {
                 if (sel?.kg === 0) {
@@ -309,6 +318,11 @@ export default function BulkOrderScreen() {
                     [item.id]: { ...prev[item.id], checked: false },
                   }));
                 }
+                setKgInputs(current => {
+                  const next = { ...current };
+                  delete next[item.id];
+                  return next;
+                });
               }}
             />
 
