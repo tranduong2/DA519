@@ -9,6 +9,14 @@ export default function App() {
   React.useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
 
+    let viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
+
     const styleId = 'mobile-input-no-auto-zoom';
     if (document.getElementById(styleId)) return;
 
