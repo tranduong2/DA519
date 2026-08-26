@@ -302,7 +302,7 @@ export default function BulkOrderScreen() {
 
             <TextInput
               style={[styles.kgInput, kgVal === 0 && styles.kgInputZero]}
-              keyboardType="decimal-pad"
+              inputMode="decimal"
               value={kgInputs[item.id] ?? (sel ? String(sel.kg).replace('.', ',') : '1')}
               onFocus={() => { if (!isChecked) toggle(item); }}
               onChangeText={val => {
@@ -413,7 +413,7 @@ export default function BulkOrderScreen() {
                   <TextInput style={styles.customNoteInput} value={item.note} onChangeText={value => updateCustomItem(item.id, 'note', value)} placeholder="Ghi chú (loại, kích thước...)" placeholderTextColor="#b0b0b0" />
                 </View>
                 <View style={[styles.customQtyWrap, isMobile && styles.customQtyWrapMobile]}>
-                  <TextInput style={styles.customQtyInput} value={item.kg} onChangeText={value => updateCustomItem(item.id, 'kg', value.replace(/[^0-9.,]/g, '').replace(',', '.'))} keyboardType="decimal-pad" />
+                  <TextInput style={styles.customQtyInput} value={item.kg} onChangeText={value => updateCustomItem(item.id, 'kg', value.replace(/[^0-9.,]/g, '').replace(',', '.'))} inputMode="decimal" />
                   <Text style={styles.customKg}>kg</Text>
                 </View>
                 <TouchableOpacity style={styles.customRemove} onPress={() => removeCustomItem(item.id)}><Text style={styles.customRemoveText}>✕</Text></TouchableOpacity>
