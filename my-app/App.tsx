@@ -1,10 +1,32 @@
 import React from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useUserStore } from './src/store/userStore';
 
 export default function App() {
   const hasHydrated = useUserStore(state => state.hasHydrated);
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+
+    const styleId = 'mobile-input-no-auto-zoom';
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @media (max-width: 900px) {
+        html { -webkit-text-size-adjust: 100%; }
+        input, textarea, select {
+          font-size: 16px !important;
+          touch-action: manipulation;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => style.remove();
+  }, []);
 
   if (!hasHydrated) {
     return (
