@@ -342,9 +342,6 @@ export default function OrdersScreen() {
       </View>
 
       {/* Tabs */}
-      {user?.role === 'admin' && <TouchableOpacity onPress={() => navigation.navigate('AdminChat')} style={[s.chatLink, isDesktop && s.chatLinkDesktop]}>
-        <Text style={{ color: '#2159a6', fontWeight: '700', fontSize: 16 }}>💬 Chat nội bộ Admin →</Text>
-      </TouchableOpacity>}
       <View style={s.tabs}>
         {([
           { id: 'orders', label: 'Đơn thường', count: normalOrders.length },
@@ -465,9 +462,6 @@ const s = StyleSheet.create({
   list:   { padding: 16, gap: 12, paddingBottom: 40 },
   listDesktop: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', paddingTop: 12 },
   empty:  { textAlign: 'center', color: '#aaa', marginTop: 40, fontSize: 14 },
-
-  chatLink: { margin: 12, padding: 15, borderRadius: 10, backgroundColor: '#e5f0ff' },
-  chatLinkDesktop: { marginVertical: 8, paddingVertical: 11 },
 
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
