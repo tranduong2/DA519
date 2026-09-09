@@ -36,6 +36,13 @@ test('authentication, active admin membership, and direct room isolation', async
   assert.equal((await request('/rooms/dm:2:1/messages')).status, 403);
   assert.equal((await request('/rooms/dm:1:5/messages')).status, 403);
 });
+test('all public chat tables have RLS enabled', async () => {
+  const result = await pg.query(`SELECT relname, relrowsecurity FROM pg_class WHERE relname = ANY($1::text[]) ORDER BY relname`, [[
+    'admin_chat_groups', 'admin_chat_messages', 'admin_chat_reads', 'admin_chat_reactions'
+  ]]);
+  assert.equal(result.rows.length, 4);
+  assert.ok(result.rows.every(row => row.relrowsecurity === true));
+});
 test('text, image, retries, replies, reactions and unread/read state', async () => {
   const payload = { body: 'Xin chào\nĐội ngũ 👋', image, clientId: 'test_message_1' };
   const sent = await request('/rooms/dm:1:2/messages', 'admin-one', 'POST', payload);

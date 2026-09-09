@@ -36,6 +36,8 @@ Nếu `/admin/chat/rooms` trả 404: frontend đang gọi backend phiên bản c
 
 Ảnh được lưu trong PostgreSQL để tồn tại qua lần khởi động lại API; chỉ admin thuộc hội thoại mới tải được ảnh. Với lượng ảnh lớn, nên chuyển sang object storage riêng tư. Web đã kiểm tra trực tiếp ở 1280px và 390px; cần kiểm tra bộ chọn ảnh/bàn phím trên thiết bị Android/iOS thật trước khi phát hành native.
 
+Bốn bảng chat đều tự bật RLS khi backend khởi động và thu hồi quyền của `PUBLIC`, `anon`, `authenticated`. Dự án không tạo policy Supabase Auth cho các bảng này vì frontend không truy cập Supabase trực tiếp; toàn bộ quyền admin và thành viên nhóm được kiểm tra ở Express. `DATABASE_URL` phải tiếp tục dùng tài khoản `postgres` của Supabase như file `.env.example` để backend có thể truy cập sau khi bật RLS.
+
 ## Chatbot AI tổng quát
 
 Ứng dụng có nút **AI** nổi trên web và mobile. Chatbot giữ lịch sử trong lần mở ứng dụng, có nút tạo cuộc trò chuyện mới và không lưu nội dung vào PostgreSQL.

@@ -25,6 +25,25 @@ export async function installAdminChat(app: express.Express, db: PostgresCompatP
     reader_id INTEGER NOT NULL REFERENCES users(id), emoji TEXT NOT NULL,
     UNIQUE(message_id, reader_id))`);
 
+  // Chat is exposed only through the Express API, which performs its own admin
+  // and room-membership checks. Block anon/authenticated access through
+  // Supabase Data API; the postgres owner used by DATABASE_URL bypasses RLS.
+  const chatTables = ['admin_chat_groups', 'admin_chat_messages', 'admin_chat_reads', 'admin_chat_reactions'];
+  for (const table of chatTables) {
+    await db.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
+    await db.query(`REVOKE ALL PRIVILEGES ON TABLE ${table} FROM PUBLIC`);
+  }
+  await db.query(`DO $secure_chat$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE admin_chat_groups, admin_chat_messages, admin_chat_reads, admin_chat_reactions FROM anon';
+      END IF;
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+        EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE admin_chat_groups, admin_chat_messages, admin_chat_reads, admin_chat_reactions FROM authenticated';
+      END IF;
+    END
+  $secure_chat$`);
+
   const router = express.Router();
   router.use(async (req: ChatRequest, res: Response, next: NextFunction) => {
     try {
