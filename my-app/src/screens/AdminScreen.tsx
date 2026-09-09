@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Modal, SafeAreaView, RefreshControl, TextInput,
+  ActivityIndicator, Modal, SafeAreaView, RefreshControl, TextInput, useWindowDimensions,
 } from 'react-native';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -57,6 +57,9 @@ const fmtDate  = (s: string) => new Date(s).toLocaleDateString('vi-VN');
 
 // ─── Main Component ───────────────────────────────────────────────
 export default function OrdersScreen() {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+  const orderCardWidth = width >= 1500 ? '32.6%' : width >= 900 ? '49.3%' : '100%';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Admin'>>();
   const user = useUserStore(s => s.user);
@@ -130,7 +133,7 @@ export default function OrdersScreen() {
   const renderOrderCard = (o: NormalOrder) => (
     <TouchableOpacity
       key={o.id}
-      style={s.card}
+      style={[s.card, isDesktop && { width: orderCardWidth as any }]}
       activeOpacity={0.78}
       onPress={() => navigation.navigate('AdminOrderDetail', { orderId: o.id, type: 'normal' })}
       accessibilityRole="button"
@@ -176,7 +179,7 @@ export default function OrdersScreen() {
   const renderBulkCard = (o: BulkOrder) => (
     <TouchableOpacity
       key={o.id}
-      style={s.card}
+      style={[s.card, isDesktop && { width: orderCardWidth as any }]}
       activeOpacity={0.78}
       onPress={() => navigation.navigate('AdminOrderDetail', { orderId: o.id, type: 'bulk' })}
       accessibilityRole="button"
@@ -339,7 +342,7 @@ export default function OrdersScreen() {
       </View>
 
       {/* Tabs */}
-      {user?.role === 'admin' && <TouchableOpacity onPress={() => navigation.navigate('AdminChat')} style={{ margin: 12, padding: 15, borderRadius: 10, backgroundColor: '#e5f0ff' }}>
+      {user?.role === 'admin' && <TouchableOpacity onPress={() => navigation.navigate('AdminChat')} style={[s.chatLink, isDesktop && s.chatLinkDesktop]}>
         <Text style={{ color: '#2159a6', fontWeight: '700', fontSize: 16 }}>💬 Chat nội bộ Admin →</Text>
       </TouchableOpacity>}
       <View style={s.tabs}>
@@ -402,7 +405,8 @@ export default function OrdersScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={s.list}
+          style={s.ordersScroll}
+          contentContainerStyle={[s.list, isDesktop && s.listDesktop]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -457,8 +461,13 @@ const s = StyleSheet.create({
   storeSummaryTotal: { color: '#e65100', fontSize: 17, fontWeight: '900', marginTop: 5 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  ordersScroll: { flex: 1 },
   list:   { padding: 16, gap: 12, paddingBottom: 40 },
+  listDesktop: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', paddingTop: 12 },
   empty:  { textAlign: 'center', color: '#aaa', marginTop: 40, fontSize: 14 },
+
+  chatLink: { margin: 12, padding: 15, borderRadius: 10, backgroundColor: '#e5f0ff' },
+  chatLinkDesktop: { marginVertical: 8, paddingVertical: 11 },
 
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
