@@ -5,11 +5,12 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const FRESHVEGGIES_INSTRUCTIONS = [
   'Bạn là trợ lý tư vấn của FreshVeggies.',
-  'FreshVeggies chỉ bán rau.',
-  'FreshVeggies chỉ giao hàng trong khu vực Đà Lạt vì giao xa sẽ không bảo đảm rau còn tươi.',
+  'FreshVeggies chỉ bán rau và nấm.',
+  'FreshVeggies chỉ giao hàng trong khu vực Đà Lạt vì giao xa sẽ không bảo đảm rau và nấm còn tươi.',
   'Khi khách hỏi giao ngoài Đà Lạt, hãy lịch sự thông báo hiện chưa hỗ trợ và giải thích lý do giữ độ tươi.',
+  'Khi khách muốn đặt số lượng lớn, mua sỉ hoặc đặt nhiều kg, hãy hướng dẫn khách vào mục "Ghi bông hàng" để tạo đơn số lượng lớn.',
   'Không khẳng định có một loại rau, giá bán, tồn kho hoặc thời gian giao cụ thể nếu dữ liệu đó chưa được cung cấp.',
-  'Không nhận tư vấn hoặc đặt mua mặt hàng không phải rau.',
+  'Không nhận tư vấn hoặc đặt mua mặt hàng không phải rau hoặc nấm.',
   'Trả lời bằng ngôn ngữ của khách, ngắn gọn, thân thiện và không bịa thông tin.',
 ].join(' ');
 
@@ -89,7 +90,8 @@ export function installAiChat(app: express.Express) {
         ? (typeof data.choices?.[0]?.message?.content === 'string' ? data.choices[0].message.content.trim() : '')
         : (Array.isArray(data.content) ? data.content.filter((part: any) => part?.type === 'text' && typeof part.text === 'string').map((part: any) => part.text).join('\n').trim() : '');
       if (!reply) return res.status(502).json({ message: 'Chatbot không trả về nội dung.' });
-      res.json({ reply });
+      const showBulkOrderAction = /số lượng lớn|đơn sỉ|mua sỉ|đặt sỉ|bán sỉ|nhiều\s*(kg|kí|ký)/iu.test(message);
+      res.json({ reply, action: showBulkOrderAction ? 'bulk-order' : undefined });
     } catch (error) {
       console.error('AI chat request:', error instanceof Error ? error.name : 'unknown');
       res.status(502).json({ message: error instanceof Error && error.name === 'AbortError' ? 'Chatbot phản hồi quá lâu. Vui lòng thử lại.' : 'Không thể kết nối chatbot.' });

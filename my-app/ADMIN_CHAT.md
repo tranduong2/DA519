@@ -46,4 +46,4 @@ Trên Render, thêm biến bí mật `ANTHROPIC_API_KEY`; có thể đặt `ANTH
 
 Để dùng gói miễn phí, thêm `GROQ_API_KEY` và `GROQ_MODEL=openai/gpt-oss-20b` trên Render. Backend ưu tiên Groq khi có khóa; nếu không có khóa Groq thì mới dùng Anthropic. Không đặt khóa Groq trong frontend hoặc biến bắt đầu bằng `EXPO_PUBLIC_`.
 
-Kiến thức kinh doanh hiện được cấu hình cho chatbot: FreshVeggies chỉ bán rau và chỉ giao trong khu vực Đà Lạt để bảo đảm rau còn tươi. Chatbot sẽ từ chối lịch sự các yêu cầu giao ngoài Đà Lạt hoặc mua mặt hàng không phải rau, đồng thời không tự bịa giá và tồn kho.
+Kiến thức kinh doanh hiện được cấu hình cho chatbot: FreshVeggies chỉ bán rau và nấm, đồng thời chỉ giao trong khu vực Đà Lạt để bảo đảm sản phẩm còn tươi. Chatbot sẽ từ chối lịch sự các yêu cầu giao ngoài Đà Lạt hoặc mua mặt hàng khác, đồng thời không tự bịa giá và tồn kho. Khi khách hỏi mua sỉ hoặc số lượng lớn, khung chat hiện nút dẫn thẳng đến mục **Ghi bông hàng**.

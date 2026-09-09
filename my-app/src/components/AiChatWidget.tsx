@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AiMessage, askAi } from '@/services/aiChatService';
+import { navigationRef } from '@/navigation/navigationRef';
 
 const WELCOME: AiMessage = { role: 'assistant', content: 'Xin chào! Mình là trợ lý AI của FreshVeggies. Bạn muốn hỏi gì?' };
 
@@ -12,6 +13,7 @@ export default function AiChatWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showBulkOrder, setShowBulkOrder] = useState(false);
   const list = useRef<FlatList<AiMessage>>(null);
   const lock = useRef(false);
 
@@ -26,8 +28,9 @@ export default function AiChatWidget() {
     setError('');
     setLoading(true);
     try {
-      const reply = await askAi(question, history);
-      setMessages(current => [...current, { role: 'assistant', content: reply }]);
+      const result = await askAi(question, history);
+      setMessages(current => [...current, { role: 'assistant', content: result.reply }]);
+      setShowBulkOrder(result.action === 'bulk-order');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Có lỗi khi kết nối chatbot.');
     } finally {
@@ -51,7 +54,7 @@ export default function AiChatWidget() {
             <View style={styles.header}>
               <View style={styles.botAvatar}><Ionicons name="sparkles" size={20} color="#fff" /></View>
               <View style={{ flex: 1 }}><Text style={styles.title}>Trợ lý AI</Text><Text style={styles.subtitle}>Hỏi đáp tổng quát</Text></View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Tạo cuộc trò chuyện mới" onPress={() => { setMessages([WELCOME]); setError(''); }} style={styles.iconButton}><Ionicons name="refresh" size={23} color="#39754a" /></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Tạo cuộc trò chuyện mới" onPress={() => { setMessages([WELCOME]); setError(''); setShowBulkOrder(false); }} style={styles.iconButton}><Ionicons name="refresh" size={23} color="#39754a" /></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Đóng chatbot" onPress={() => setOpen(false)} style={styles.iconButton}><Ionicons name="close" size={25} color="#334b3b" /></Pressable>
             </View>
             <FlatList
@@ -64,6 +67,7 @@ export default function AiChatWidget() {
               renderItem={({ item }) => <View style={[styles.message, item.role === 'user' ? styles.userMessage : styles.aiMessage]}><Text selectable style={styles.messageText}>{item.content}</Text></View>}
               ListFooterComponent={loading ? <View style={[styles.message, styles.aiMessage, styles.loading]}><ActivityIndicator color="#2e7d32" /><Text style={styles.subtitle}>Đang trả lời...</Text></View> : null}
             />
+            {showBulkOrder && <Pressable accessibilityRole="button" onPress={() => { setOpen(false); if (navigationRef.isReady()) navigationRef.navigate('BulkOrder'); }} style={styles.bulkButton}><Ionicons name="cart" size={19} color="#fff" /><Text style={styles.bulkButtonText}>Đi đến Ghi bông hàng</Text></Pressable>}
             {!!error && <View style={styles.errorRow}><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" accessibilityLabel="Đóng lỗi" onPress={() => setError('')}><Ionicons name="close" size={20} color="#a92929" /></Pressable></View>}
             <View style={styles.composer}>
               <TextInput
@@ -107,5 +111,6 @@ const styles = StyleSheet.create({
   iconButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }, list: { flex: 1, backgroundColor: '#f5f7f5' }, messages: { padding: 14, gap: 10 },
   message: { maxWidth: '88%', paddingHorizontal: 13, paddingVertical: 10, borderRadius: 14 }, aiMessage: { alignSelf: 'flex-start', backgroundColor: '#fff', borderWidth: 1, borderColor: '#dde7df' }, userMessage: { alignSelf: 'flex-end', backgroundColor: '#dff2e2' }, messageText: { color: '#263b2b', fontSize: 15, lineHeight: 21 }, loading: { flexDirection: 'row', gap: 9, alignItems: 'center' },
   errorRow: { backgroundColor: '#fff0f0', padding: 9, flexDirection: 'row', alignItems: 'center', gap: 8 }, errorText: { color: '#a92929', flex: 1, fontSize: 13 },
+  bulkButton: { marginHorizontal: 12, marginVertical: 8, minHeight: 44, borderRadius: 12, backgroundColor: '#2e7d32', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, bulkButtonText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, borderTopWidth: 1, borderColor: '#dfe8e0' }, input: { flex: 1, minHeight: 44, maxHeight: 110, backgroundColor: '#f1f5f2', borderRadius: 12, padding: 11, fontSize: 16, color: '#243a2a', textAlignVertical: 'top' }, send: { width: 45, height: 45, borderRadius: 13, backgroundColor: '#2e7d32', alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: .45 }, disclaimer: { color: '#7b897e', textAlign: 'center', fontSize: 10, paddingHorizontal: 8, paddingBottom: 8 },
 });
