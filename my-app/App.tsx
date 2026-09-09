@@ -2,6 +2,8 @@ import React from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useUserStore } from './src/store/userStore';
+import ZaloSupport from './src/components/ZaloSupport';
+import AiChatWidget from './src/components/AiChatWidget';
 
 export default function App() {
   const hasHydrated = useUserStore(state => state.hasHydrated);
@@ -46,7 +48,13 @@ export default function App() {
   }
 
   try {
-    return <AppNavigator />;
+    return (
+      <View style={{ flex: 1 }}>
+        <AppNavigator />
+        <AiChatWidget />
+        <ZaloSupport />
+      </View>
+    );
   } catch (e) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

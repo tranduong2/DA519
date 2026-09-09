@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:chat": "npm run build && node --test tests/adminChat.test.cjs"
+    "test:chat": "npm run build && node --test tests/adminChat.test.cjs",
+    "test:ai": "npm run build && node --test tests/aiChat.test.cjs"
   },
   "keywords": [],
   "author": "",

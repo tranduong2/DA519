@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { PostgresCompatPool, ResultSetHeader } from './postgresCompat';
 import { installAdminChat } from './adminChat';
+import { installAiChat } from './aiChat';
 
 dotenv.config();
 
@@ -429,6 +430,7 @@ async function startServer() {
     await ensureOrderColumns();
     await ensureBulkOrderColumns();
     await installAdminChat(app, pool);
+    installAiChat(app);
 
     app.get('/health', (_req, res) => {
       res.json({ status: 'ok', database: 'supabase-postgres' });

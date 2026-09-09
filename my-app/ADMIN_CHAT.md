@@ -35,3 +35,9 @@ Tin nhắn tự đồng bộ mỗi 3 giây khi trang chat đang mở và ứng d
 Nếu `/admin/chat/rooms` trả 404: frontend đang gọi backend phiên bản cũ. Cần để Render deploy commit mới từ nhánh `master`, root directory `my-app/dalat-api`, build `npm ci --include=dev && npm run build`, start `npm start`. Sau khi triển khai đúng, gọi endpoint không có token sẽ trả 401 thay vì 404.
 
 Ảnh được lưu trong PostgreSQL để tồn tại qua lần khởi động lại API; chỉ admin thuộc hội thoại mới tải được ảnh. Với lượng ảnh lớn, nên chuyển sang object storage riêng tư. Web đã kiểm tra trực tiếp ở 1280px và 390px; cần kiểm tra bộ chọn ảnh/bàn phím trên thiết bị Android/iOS thật trước khi phát hành native.
+
+## Chatbot AI tổng quát
+
+Ứng dụng có nút **AI** nổi trên web và mobile. Chatbot giữ lịch sử trong lần mở ứng dụng, có nút tạo cuộc trò chuyện mới và không lưu nội dung vào PostgreSQL.
+
+Trên Render, thêm biến bí mật `ANTHROPIC_API_KEY`; có thể đặt `ANTHROPIC_MODEL=claude-sonnet-4-6`. Không đặt khóa API trong biến bắt đầu bằng `EXPO_PUBLIC_`. Sau khi backend được triển khai lại, endpoint `/api/ai-chat` sẽ hoạt động. Chạy `npm run test:ai` trong `dalat-api` để kiểm tra phần tích hợp mà không gọi API thật.
