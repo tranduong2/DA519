@@ -158,6 +158,9 @@ export default function LoginScreen() {
           <Text style={styles.label}>Email</Text>
           <View style={[styles.inputWrap, !!emailError && styles.inputError]}>
             <TextInput
+              nativeID="login-email"
+              testID="login-email"
+              accessibilityLabel="Email đăng nhập"
               style={styles.input}
               placeholder="example@email.com"
               placeholderTextColor="#b0bfb0"
@@ -174,6 +177,9 @@ export default function LoginScreen() {
           <Text style={styles.label}>Mật khẩu</Text>
           <View style={[styles.inputWrap, !!passwordError && styles.inputError]}>
             <TextInput
+              nativeID="login-password"
+              testID="login-password"
+              accessibilityLabel="Mật khẩu đăng nhập"
               style={styles.input}
               placeholder="Nhập mật khẩu"
               placeholderTextColor="#b0bfb0"
@@ -202,6 +208,8 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity
+            testID="login-submit"
+            accessibilityRole="button"
             style={[styles.btn, loading && styles.btnLoading]}
             onPress={handleLogin}
             disabled={loading}

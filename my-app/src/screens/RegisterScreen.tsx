@@ -138,6 +138,9 @@ export default function RegisterScreen() {
           <Text style={styles.label}>Ho va ten *</Text>
           <View style={[styles.inputWrap, touched.name && nameErr ? styles.inputError : null]}>
             <TextInput
+              nativeID="register-name"
+              testID="register-name"
+              accessibilityLabel="Họ và tên đăng ký"
               style={styles.input}
               placeholder="Nguyen Van A"
               placeholderTextColor="#b0bfb0"
@@ -153,6 +156,9 @@ export default function RegisterScreen() {
           <Text style={styles.label}>Email *</Text>
           <View style={[styles.inputWrap, touched.email && emailErr ? styles.inputError : null]}>
             <TextInput
+              nativeID="register-email"
+              testID="register-email"
+              accessibilityLabel="Email đăng ký"
               style={styles.input}
               placeholder="example@gmail.com"
               placeholderTextColor="#b0bfb0"
@@ -174,6 +180,9 @@ export default function RegisterScreen() {
           <Text style={styles.label}>So dien thoai *</Text>
           <View style={[styles.inputWrap, touched.phone && phoneErr ? styles.inputError : null]}>
             <TextInput
+              nativeID="register-phone"
+              testID="register-phone"
+              accessibilityLabel="Số điện thoại đăng ký"
               style={styles.input}
               placeholder="0901 234 567"
               placeholderTextColor="#b0bfb0"
@@ -193,6 +202,9 @@ export default function RegisterScreen() {
           <Text style={styles.label}>Mat khau *</Text>
           <View style={[styles.inputWrap, touched.password && pwErrors.length > 0 ? styles.inputError : null]}>
             <TextInput
+              nativeID="register-password"
+              testID="register-password"
+              accessibilityLabel="Mật khẩu đăng ký"
               style={styles.input}
               placeholder="Toi thieu 8 ky tu"
               placeholderTextColor="#b0bfb0"
@@ -235,6 +247,9 @@ export default function RegisterScreen() {
           <Text style={styles.label}>Xac nhan mat khau *</Text>
           <View style={[styles.inputWrap, touched.confirm && confirmErr ? styles.inputError : null]}>
             <TextInput
+              nativeID="register-confirm-password"
+              testID="register-confirm-password"
+              accessibilityLabel="Xác nhận mật khẩu đăng ký"
               style={styles.input}
               placeholder="Nhap lai mat khau"
               placeholderTextColor="#b0bfb0"
@@ -250,7 +265,7 @@ export default function RegisterScreen() {
           {touched.confirm && !!confirmErr && <Text style={styles.errorText}>{confirmErr}</Text>}
 
           {/* Dieu khoan */}
-          <TouchableOpacity style={styles.agreeRow} onPress={() => setAgreed(!agreed)} activeOpacity={0.8}>
+          <TouchableOpacity testID="register-terms" accessibilityRole="checkbox" accessibilityState={{ checked: agreed }} style={styles.agreeRow} onPress={() => setAgreed(!agreed)} activeOpacity={0.8}>
             <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
               {agreed && <Text style={styles.checkmark}>V</Text>}
             </View>
@@ -263,6 +278,8 @@ export default function RegisterScreen() {
           )}
 
           <TouchableOpacity
+            testID="register-submit"
+            accessibilityRole="button"
             style={[styles.btn, (!isValid || loading) && styles.btnDisabled]}
             onPress={handleRegister}
             disabled={loading}
