@@ -53,6 +53,9 @@ test('uses Groq first and forwards a sanitized conversation', async () => {
   assert.equal(response.data.reply, 'Xin chào từ Groq');
   assert.equal(upstreamBody.model, 'openai/gpt-oss-20b');
   assert.equal(upstreamBody.messages[0].role, 'system');
+  assert.match(upstreamBody.messages[0].content, /chỉ bán rau/);
+  assert.match(upstreamBody.messages[0].content, /chỉ giao hàng trong khu vực Đà Lạt/);
+  assert.match(upstreamBody.messages[0].content, /không bảo đảm rau còn tươi/);
   assert.deepEqual(upstreamBody.messages.slice(1), [{ role: 'assistant', content: 'Xin chào' }, { role: 'user', content: 'Bạn khỏe không?' }]);
   assert.equal(upstreamHeaders.Authorization, 'Bearer test-groq-key');
   assert.ok(!JSON.stringify(upstreamBody).includes('test-groq-key'));
@@ -65,6 +68,8 @@ test('falls back to Anthropic when Groq is not configured', async () => {
     assert.equal(response.status, 200);
     assert.equal(response.data.reply, 'Xin chào từ AI');
     assert.equal(upstreamBody.model, 'claude-sonnet-4-6');
+    assert.match(upstreamBody.system, /chỉ bán rau/);
+    assert.match(upstreamBody.system, /chỉ giao hàng trong khu vực Đà Lạt/);
     assert.equal(upstreamHeaders['x-api-key'], 'test-anthropic-key');
   } finally {
     process.env.GROQ_API_KEY = 'test-groq-key';

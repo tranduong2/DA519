@@ -3,6 +3,16 @@ import express, { Request, Response, NextFunction } from 'express';
 type RateEntry = { count: number; resetAt: number };
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
+const FRESHVEGGIES_INSTRUCTIONS = [
+  'Bạn là trợ lý tư vấn của FreshVeggies.',
+  'FreshVeggies chỉ bán rau.',
+  'FreshVeggies chỉ giao hàng trong khu vực Đà Lạt vì giao xa sẽ không bảo đảm rau còn tươi.',
+  'Khi khách hỏi giao ngoài Đà Lạt, hãy lịch sự thông báo hiện chưa hỗ trợ và giải thích lý do giữ độ tươi.',
+  'Không khẳng định có một loại rau, giá bán, tồn kho hoặc thời gian giao cụ thể nếu dữ liệu đó chưa được cung cấp.',
+  'Không nhận tư vấn hoặc đặt mua mặt hàng không phải rau.',
+  'Trả lời bằng ngôn ngữ của khách, ngắn gọn, thân thiện và không bịa thông tin.',
+].join(' ');
+
 const requests = new Map<string, RateEntry>();
 
 function aiRateLimit(req: Request, res: Response, next: NextFunction) {
@@ -64,10 +74,10 @@ export function installAiChat(app: express.Express) {
         body: JSON.stringify(useGroq ? {
           model: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
           max_completion_tokens: 1_000,
-          messages: [{ role: 'system', content: 'Bạn là trợ lý AI tổng quát, hữu ích và thân thiện trên website FreshVeggies. Trả lời bằng ngôn ngữ người dùng. Không bịa thông tin; nói rõ khi không chắc chắn.' }, ...messages],
+          messages: [{ role: 'system', content: FRESHVEGGIES_INSTRUCTIONS }, ...messages],
         } : {
           model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-6', max_tokens: 1_000,
-          system: 'Bạn là trợ lý AI tổng quát, hữu ích và thân thiện trên website FreshVeggies. Trả lời bằng ngôn ngữ người dùng. Không bịa thông tin; nói rõ khi không chắc chắn.', messages,
+          system: FRESHVEGGIES_INSTRUCTIONS, messages,
         }),
       });
       const data: any = await response.json().catch(() => ({}));
