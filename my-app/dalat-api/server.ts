@@ -1238,7 +1238,7 @@ async function startServer() {
           for (const item of items) {
             const itemId = Number(item?.id);
             const price = Number(item?.pricePerKg);
-            if (!Number.isInteger(itemId) || !Number.isFinite(price) || price <= 0) return res.status(400).json({ message: "Đơn giá phải là số lớn hơn 0" });
+            if (!Number.isInteger(itemId) || !Number.isFinite(price) || price < 0) return res.status(400).json({ message: "Đơn giá không được là số âm" });
             prices.set(itemId, price);
           }
           if (storedItems.some(item => !prices.has(Number(item.id)))) return res.status(400).json({ message: "Vui lòng nhập đủ đơn giá cho tất cả sản phẩm" });

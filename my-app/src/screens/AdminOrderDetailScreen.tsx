@@ -95,8 +95,8 @@ export default function AdminOrderDetailScreen() {
       id: item.id,
       pricePerKg: Number(String(priceInputs[String(item.id)] ?? '').replace(/[^\d]/g, '')),
     }));
-    if (items.some((item: any) => !Number.isFinite(item.pricePerKg) || item.pricePerKg <= 0)) {
-      Alert.alert('Thiếu đơn giá', 'Vui lòng nhập đơn giá lớn hơn 0 cho tất cả sản phẩm.');
+    if (items.some((item: any) => !Number.isFinite(item.pricePerKg) || item.pricePerKg < 0)) {
+      Alert.alert('Đơn giá không hợp lệ', 'Đơn giá không được là số âm.');
       return;
     }
     try {
@@ -109,15 +109,19 @@ export default function AdminOrderDetailScreen() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || 'Không thể lưu đơn giá.');
       setOrder(payload.order);
-      Alert.alert('Thành công', `Đã tính tổng hóa đơn: ${money(payload.order.totalPrice)}`);
+      const missingNames = (payload.order.items ?? []).filter((item: any) => Number(item.pricePerKg) <= 0).map((item: any) => item.productName);
+      Alert.alert('Đã lưu đơn giá', missingNames.length
+        ? `Đã lưu bản nháp. Còn thiếu đơn giá: ${missingNames.join(', ')}.`
+        : `Đã tính tổng hóa đơn: ${money(payload.order.totalPrice)}`);
     } catch (reason: any) { setError(reason?.message || 'Không thể lưu đơn giá.'); }
     finally { setSaving(false); }
   };
 
   const sendBulkInvoice = async () => {
     if (!token || type !== 'bulk') return;
-    if ((order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0) || Number(order.totalPrice) <= 0) {
-      Alert.alert('Chưa thể gửi', 'Vui lòng nhập và lưu đủ đơn giá trước khi gửi hóa đơn.');
+    const missingNames = (order.items ?? []).filter((item: any) => Number(item.pricePerKg) <= 0).map((item: any) => item.productName);
+    if (missingNames.length || Number(order.totalPrice) <= 0) {
+      Alert.alert('Chưa thể gửi', `Vui lòng nhập và lưu đơn giá cho: ${missingNames.join(', ') || 'các sản phẩm trong đơn'}.`);
       return;
     }
     try {
@@ -136,12 +140,8 @@ export default function AdminOrderDetailScreen() {
 
   const printOrder = async () => {
     const isNormalOrder = type === 'normal';
-    if (!isNormalOrder && (order.items ?? []).some((item: any) => Number(item.pricePerKg) <= 0)) {
-      Alert.alert('Chưa thể in', 'Vui lòng nhập và lưu đơn giá cho tất cả sản phẩm.');
-      return;
-    }
     const rows = (order.items ?? []).map((item: any, index: number) => `
-      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td><td>${money(isNormalOrder ? item.price : item.pricePerKg)}</td><td>${money(isNormalOrder ? Number(item.price) * Number(item.quantity) : Number(item.kg) * Number(item.pricePerKg))}</td></tr>
+      <tr><td>${index + 1}</td><td>${escapeHtml(item.productName)}</td><td>${escapeHtml(isNormalOrder ? item.quantity : `${item.kg} kg`)}</td><td>${!isNormalOrder && Number(item.pricePerKg) <= 0 ? 'Chưa nhập' : money(isNormalOrder ? item.price : item.pricePerKg)}</td><td>${!isNormalOrder && Number(item.pricePerKg) <= 0 ? 'Chưa tính' : money(isNormalOrder ? Number(item.price) * Number(item.quantity) : Number(item.kg) * Number(item.pricePerKg))}</td></tr>
       ${item.note ? `<tr class="note"><td></td><td colspan="4">Ghi chú: ${escapeHtml(item.note)}</td></tr>` : ''}
     `).join('');
     const title = isNormalOrder ? `Đơn hàng ${order.orderCode}` : `Hóa đơn sỉ - ${order.userName || 'Cửa hàng'}`;
@@ -158,7 +158,9 @@ export default function AdminOrderDetailScreen() {
 
     const textRows = (order.items ?? []).map((item: any, i: number) => {
       const quantity = isNormalOrder ? item.quantity : `${item.kg} kg`;
-      const priceText = ` × ${money(isNormalOrder ? item.price : item.pricePerKg)} = ${money(isNormalOrder ? Number(item.quantity) * Number(item.price) : Number(item.kg) * Number(item.pricePerKg))}`;
+      const priceText = !isNormalOrder && Number(item.pricePerKg) <= 0
+        ? ' × Chưa nhập giá = Chưa tính'
+        : ` × ${money(isNormalOrder ? item.price : item.pricePerKg)} = ${money(isNormalOrder ? Number(item.quantity) * Number(item.price) : Number(item.kg) * Number(item.pricePerKg))}`;
       return `${i + 1}. ${item.productName} - ${quantity}${priceText}`;
     }).join('\n');
     const totalText = `\n\nTỔNG TIỀN: ${money(isNormalOrder ? order.totalAmount : order.totalPrice)}`;
@@ -250,9 +252,10 @@ export default function AdminOrderDetailScreen() {
                     onChangeText={value => setPriceInputs(current => ({ ...current, [String(item.id)]: value.replace(/[^\d]/g, '') }))}
                     placeholder="Đơn giá/kg"
                     keyboardType="numeric"
-                    style={[s.priceInput, isMobile && s.priceInputMobile]}
+                    style={[s.priceInput, isMobile && s.priceInputMobile, !priceInputs[String(item.id)] && s.priceInputMissing]}
                   />
                   <Text style={s.lineSubtotal}>= {money(Number(item.kg) * Number(priceInputs[String(item.id)] || 0))}</Text>
+                  {!priceInputs[String(item.id)] ? <Text style={s.missingPrice}>Chưa nhập giá</Text> : null}
                 </View> : <><Text numberOfLines={1} style={[s.packingKg, isMobile && s.packingKgMobile]}>{item.kg} kg</Text><Text numberOfLines={1} ellipsizeMode="tail" style={[s.packingNote, isMobile && s.packingNoteMobile]}>{item.note || '—'}</Text></>
               ) : null}
             </View>
@@ -355,8 +358,10 @@ const s = StyleSheet.create({
   pricingBoxMobile: { width: 154, gap: 4 },
   formulaKg: { color: '#1b5e20', fontSize: 13, fontWeight: '900' },
   priceInput: { width: 105, borderWidth: 1, borderColor: '#81c784', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 7, textAlign: 'right', color: '#263238', outlineStyle: 'none' } as any,
+  priceInputMissing: { borderColor: '#ef6c00', backgroundColor: '#fff8e1' },
   priceInputMobile: { width: 88, paddingHorizontal: 6, paddingVertical: 5, fontSize: 12 },
   lineSubtotal: { width: '100%', textAlign: 'right', color: '#e65100', fontSize: 13, fontWeight: '900' },
+  missingPrice: { width: '100%', textAlign: 'right', color: '#c2410c', fontSize: 11, fontWeight: '700' },
   packingKg: { width: 110, textAlign: 'center', color: '#1b5e20', fontSize: 18, fontWeight: '900' },
   packingKgMobile: { width: 68, fontSize: 12 },
   packingKgTextMobile: { fontSize: 11 },
