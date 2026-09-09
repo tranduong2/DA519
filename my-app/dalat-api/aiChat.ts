@@ -32,8 +32,9 @@ function normalizeHistory(value: unknown): ChatMessage[] | null {
 
 export function installAiChat(app: express.Express) {
   app.post('/api/ai-chat', aiRateLimit, async (req, res) => {
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) return res.status(503).json({ message: 'Chatbot AI chưa được cấu hình trên máy chủ.' });
+    const groqKey = process.env.GROQ_API_KEY?.trim();
+    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+    if (!groqKey && !anthropicKey) return res.status(503).json({ message: 'Chatbot AI chưa được cấu hình trên máy chủ.' });
 
     const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
     const history = normalizeHistory(req.body?.history ?? []);
@@ -48,29 +49,35 @@ export function installAiChat(app: express.Express) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45_000);
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const useGroq = Boolean(groqKey);
+      const response = await fetch(useGroq ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.anthropic.com/v1/messages', {
         method: 'POST',
         signal: controller.signal,
-        headers: {
+        headers: useGroq ? {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          Authorization: `Bearer ${groqKey}`,
+        } : {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey!,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({
-          model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-6',
-          max_tokens: 1_000,
-          system: 'Bạn là trợ lý AI tổng quát, hữu ích và thân thiện trên website FreshVeggies. Trả lời bằng ngôn ngữ người dùng. Không bịa thông tin; nói rõ khi không chắc chắn.',
-          messages,
+        body: JSON.stringify(useGroq ? {
+          model: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b',
+          max_completion_tokens: 1_000,
+          messages: [{ role: 'system', content: 'Bạn là trợ lý AI tổng quát, hữu ích và thân thiện trên website FreshVeggies. Trả lời bằng ngôn ngữ người dùng. Không bịa thông tin; nói rõ khi không chắc chắn.' }, ...messages],
+        } : {
+          model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-6', max_tokens: 1_000,
+          system: 'Bạn là trợ lý AI tổng quát, hữu ích và thân thiện trên website FreshVeggies. Trả lời bằng ngôn ngữ người dùng. Không bịa thông tin; nói rõ khi không chắc chắn.', messages,
         }),
       });
       const data: any = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error('Anthropic API error:', response.status, data?.error?.type || 'unknown');
+        console.error(`${useGroq ? 'Groq' : 'Anthropic'} API error:`, response.status, data?.error?.type || 'unknown');
         return res.status(response.status === 429 ? 429 : 502).json({ message: response.status === 429 ? 'Chatbot đang bận. Vui lòng thử lại sau.' : 'Không thể nhận phản hồi từ chatbot.' });
       }
-      const reply = Array.isArray(data.content)
-        ? data.content.filter((part: any) => part?.type === 'text' && typeof part.text === 'string').map((part: any) => part.text).join('\n').trim()
-        : '';
+      const reply = useGroq
+        ? (typeof data.choices?.[0]?.message?.content === 'string' ? data.choices[0].message.content.trim() : '')
+        : (Array.isArray(data.content) ? data.content.filter((part: any) => part?.type === 'text' && typeof part.text === 'string').map((part: any) => part.text).join('\n').trim() : '');
       if (!reply) return res.status(502).json({ message: 'Chatbot không trả về nội dung.' });
       res.json({ reply });
     } catch (error) {

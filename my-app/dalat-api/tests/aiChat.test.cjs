@@ -4,12 +4,22 @@ const express = require('express');
 const { installAiChat } = require('../dist/aiChat');
 
 const nativeFetch = global.fetch;
-const oldKey = process.env.ANTHROPIC_API_KEY;
+const oldAnthropicKey = process.env.ANTHROPIC_API_KEY;
+const oldGroqKey = process.env.GROQ_API_KEY;
+const oldGroqModel = process.env.GROQ_MODEL;
 let upstreamBody;
-process.env.ANTHROPIC_API_KEY = 'test-key';
+let upstreamHeaders;
+process.env.GROQ_API_KEY = 'test-groq-key';
+process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 global.fetch = async (input, init) => {
+  if (String(input).startsWith('https://api.groq.com/')) {
+    upstreamBody = JSON.parse(init.body);
+    upstreamHeaders = init.headers;
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'Xin chào từ Groq' } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
   if (String(input).startsWith('https://api.anthropic.com/')) {
     upstreamBody = JSON.parse(init.body);
+    upstreamHeaders = init.headers;
     return new Response(JSON.stringify({ content: [{ type: 'text', text: 'Xin chào từ AI' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   return nativeFetch(input, init);
@@ -28,18 +38,37 @@ async function request(body) {
 
 after(async () => {
   global.fetch = nativeFetch;
-  if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY;
-  else process.env.ANTHROPIC_API_KEY = oldKey;
+  if (oldAnthropicKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+  else process.env.ANTHROPIC_API_KEY = oldAnthropicKey;
+  if (oldGroqKey === undefined) delete process.env.GROQ_API_KEY;
+  else process.env.GROQ_API_KEY = oldGroqKey;
+  if (oldGroqModel === undefined) delete process.env.GROQ_MODEL;
+  else process.env.GROQ_MODEL = oldGroqModel;
   await new Promise(resolve => server.close(resolve));
 });
 
-test('returns AI text and forwards sanitized conversation', async () => {
+test('uses Groq first and forwards a sanitized conversation', async () => {
   const response = await request({ message: '  Bạn khỏe không?  ', history: [{ role: 'assistant', content: ' Xin chào ' }] });
   assert.equal(response.status, 200);
-  assert.equal(response.data.reply, 'Xin chào từ AI');
-  assert.equal(upstreamBody.model, 'claude-sonnet-4-6');
-  assert.deepEqual(upstreamBody.messages, [{ role: 'assistant', content: 'Xin chào' }, { role: 'user', content: 'Bạn khỏe không?' }]);
-  assert.ok(!JSON.stringify(upstreamBody).includes('test-key'));
+  assert.equal(response.data.reply, 'Xin chào từ Groq');
+  assert.equal(upstreamBody.model, 'openai/gpt-oss-20b');
+  assert.equal(upstreamBody.messages[0].role, 'system');
+  assert.deepEqual(upstreamBody.messages.slice(1), [{ role: 'assistant', content: 'Xin chào' }, { role: 'user', content: 'Bạn khỏe không?' }]);
+  assert.equal(upstreamHeaders.Authorization, 'Bearer test-groq-key');
+  assert.ok(!JSON.stringify(upstreamBody).includes('test-groq-key'));
+});
+
+test('falls back to Anthropic when Groq is not configured', async () => {
+  delete process.env.GROQ_API_KEY;
+  try {
+    const response = await request({ message: 'Xin chào' });
+    assert.equal(response.status, 200);
+    assert.equal(response.data.reply, 'Xin chào từ AI');
+    assert.equal(upstreamBody.model, 'claude-sonnet-4-6');
+    assert.equal(upstreamHeaders['x-api-key'], 'test-anthropic-key');
+  } finally {
+    process.env.GROQ_API_KEY = 'test-groq-key';
+  }
 });
 
 test('rejects empty, oversized and malformed conversations before calling AI', async () => {

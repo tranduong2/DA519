@@ -43,3 +43,5 @@ Bốn bảng chat đều tự bật RLS khi backend khởi động và thu hồi
 Ứng dụng có nút **AI** nổi trên web và mobile. Chatbot giữ lịch sử trong lần mở ứng dụng, có nút tạo cuộc trò chuyện mới và không lưu nội dung vào PostgreSQL.
 
 Trên Render, thêm biến bí mật `ANTHROPIC_API_KEY`; có thể đặt `ANTHROPIC_MODEL=claude-sonnet-4-6`. Không đặt khóa API trong biến bắt đầu bằng `EXPO_PUBLIC_`. Sau khi backend được triển khai lại, endpoint `/api/ai-chat` sẽ hoạt động. Chạy `npm run test:ai` trong `dalat-api` để kiểm tra phần tích hợp mà không gọi API thật.
+
+Để dùng gói miễn phí, thêm `GROQ_API_KEY` và `GROQ_MODEL=openai/gpt-oss-20b` trên Render. Backend ưu tiên Groq khi có khóa; nếu không có khóa Groq thì mới dùng Anthropic. Không đặt khóa Groq trong frontend hoặc biến bắt đầu bằng `EXPO_PUBLIC_`.
