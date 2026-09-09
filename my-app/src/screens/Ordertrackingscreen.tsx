@@ -398,7 +398,7 @@ const token = useUserStore((state) => state.token); // ← lấy token từ stor
               </Text>
               <Text style={[styles.infoSub, isCOD && { color: "#e65100" }]}>
                 {isCOD
-                  ? `Chuẩn bị ${(orderData?.totalAmount ?? totalAmount ?? 0).toLocaleString("vi-VN")}đ khi nhận`
+                  ? `Chuẩn bị ${Number(orderData?.totalAmount ?? totalAmount ?? 0).toLocaleString("vi-VN")}đ khi nhận`
                   : "Đã thanh toán"}
               </Text>
             </View>

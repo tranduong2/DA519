@@ -165,7 +165,7 @@ export default function OrderListScreen() {
                     {order.items.length} sản phẩm
                   </Text>
                   <Text style={styles.totalAmount}>
-                    {order.totalAmount.toLocaleString('vi-VN')} đ
+                    {Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
                   </Text>
                 </View>
 

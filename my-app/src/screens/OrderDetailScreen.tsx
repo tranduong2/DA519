@@ -219,7 +219,7 @@ const token = user?.token ?? null;
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Tổng cộng:</Text>
               <Text style={styles.priceValue}>
-                {selectedOrder.totalAmount.toLocaleString('vi-VN')} đ
+                {Number(selectedOrder.totalAmount || 0).toLocaleString('vi-VN')} đ
               </Text>
             </View>
             <View style={styles.priceRow}>
