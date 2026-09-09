@@ -339,6 +339,9 @@ export default function OrdersScreen() {
       </View>
 
       {/* Tabs */}
+      {user?.role === 'admin' && <TouchableOpacity onPress={() => navigation.navigate('AdminChat')} style={{ margin: 12, padding: 15, borderRadius: 10, backgroundColor: '#e5f0ff' }}>
+        <Text style={{ color: '#2159a6', fontWeight: '700', fontSize: 16 }}>💬 Chat nội bộ Admin →</Text>
+      </TouchableOpacity>}
       <View style={s.tabs}>
         {([
           { id: 'orders', label: 'Đơn thường', count: normalOrders.length },

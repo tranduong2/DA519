@@ -3,6 +3,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { PostgresCompatPool, ResultSetHeader } from './postgresCompat';
+import { installAdminChat } from './adminChat';
 
 dotenv.config();
 
@@ -34,7 +35,8 @@ app.use((error: Error, _req: Request, res: Response, next: NextFunction) => {
   }
   next(error);
 });
-app.use(express.json({ limit: '1mb' }));
+const standardJson = express.json({ limit: '1mb' });
+app.use((req, res, next) => req.path.startsWith('/admin/chat/') ? next() : standardJson(req, res, next));
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -426,6 +428,7 @@ async function startServer() {
     await ensureInventoryTables();
     await ensureOrderColumns();
     await ensureBulkOrderColumns();
+    await installAdminChat(app, pool);
 
     app.get('/health', (_req, res) => {
       res.json({ status: 'ok', database: 'supabase-postgres' });
